@@ -3,6 +3,7 @@ import type { AppState } from '../state/app-state';
 import type { Store } from '../state/store';
 import type { DataService } from '../state/data-service';
 import { selectPlan, selectRow, selectRows, selectVisibleRows } from '../state/selectors';
+import { keyCheckMessage } from '../state/key-status';
 import { buildSearch, parseUrlState, replaceUrlState } from './url-state';
 import { el } from './dom';
 import { createHeader } from './header';
@@ -39,7 +40,7 @@ export function createApp(options: AppOptions): App {
       const state = store.get();
       return {
         ok: state.keyStatus === 'valid',
-        message: state.keyMessage,
+        message: keyCheckMessage(state),
       };
     },
     onRemove: () => service.removeKey(),

@@ -101,7 +101,7 @@ export function createOnboarding(actions: OnboardingActions): OnboardingView {
         setText(
           lead,
           state.keyMessage ??
-            'Torn did not accept the key. Check that it is a full access key with market permissions, then try again.',
+            'Torn did not accept the key. Check that it is still active and has public access, then try again. Custom keys need the market selection.',
         );
         actionRow.replaceChildren(
           actionButton('Replace API key', true, actions.onKey),
@@ -110,13 +110,17 @@ export function createOnboarding(actions: OnboardingActions): OnboardingView {
         return;
       }
 
-      setText(title, 'Loading the item catalog.');
+      const failed = state.catalogStatus === 'error';
+      setText(title, failed ? 'Could not load the item catalog.' : 'Loading the item catalog.');
       setText(
         lead,
-        'Torn is returning item prices and shop data. This usually takes a few seconds on the first load.',
+        failed
+          ? (state.error ??
+              'Torn returned an error while loading the catalog. Try again in a moment.')
+          : 'Torn is returning item prices and shop data. This usually takes a few seconds on the first load.',
       );
       actionRow.replaceChildren(
-        state.catalogStatus === 'error'
+        failed
           ? actionButton('Try again', true, actions.onRetry)
           : el('span', { className: 'badge badge--info', text: 'Fetching catalog' }),
         actionButton('Trip settings', false, actions.onSettings),

@@ -95,7 +95,7 @@ export function createHeader(actions: HeaderActions): HeaderView {
           ? (state.keyMessage ?? 'The API key was rejected.')
           : state.keyStatus === 'valid'
             ? 'API key is stored in this browser'
-            : 'Add your Torn API key for live market quotes';
+            : (state.error ?? 'Add your Torn API key for live market quotes');
       const busy =
         state.stockStatus === 'loading' ||
         state.catalogStatus === 'loading' ||

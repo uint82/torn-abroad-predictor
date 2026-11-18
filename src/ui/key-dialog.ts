@@ -53,7 +53,7 @@ export function createKeyDialog(actions: KeyDialogActions): KeyDialogView {
     el('div', { className: 'field__row' }, [input, reveal]),
     el('span', {
       className: 'field__hint',
-      text: 'Use a full access key. Market data needs the market permission.',
+      text: 'A public access key is enough. A custom key must include the market selection.',
     }),
   ]);
 
@@ -151,7 +151,10 @@ export function createKeyDialog(actions: KeyDialogActions): KeyDialogView {
       showStatus('success', 'Key accepted. Live quotes are loading.');
       window.setTimeout(() => shell.close(), 700);
     } else {
-      showStatus('error', result.message ?? 'Torn rejected the key. Check it and try again.');
+      showStatus(
+        'error',
+        result.message ?? 'Could not verify the key. Check your connection and try again.',
+      );
     }
   });
 
