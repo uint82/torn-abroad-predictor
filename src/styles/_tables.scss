@@ -205,3 +205,29 @@
     }
   }
 }
+
+.items-table__row {
+  cursor: pointer;
+}
+
+.items-table tbody tr[aria-selected='true'] td {
+  background: rgb(244 180 27 / 7%);
+}
+
+.items-table tbody tr[aria-selected='true'] td:first-child {
+  background: rgb(244 180 27 / 10%);
+}
+
+.items-table__item-name {
+  padding: 0;
+  text-align: left;
+}
+
+.items-table__item-name:hover {
+  color: var(--accent);
+}
+
+.items-table__stock-note {
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+}

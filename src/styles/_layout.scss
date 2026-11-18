@@ -33,6 +33,7 @@
   gap: var(--space-3);
   align-items: center;
   min-width: 0;
+  text-decoration: none;
 }
 
 .brand-mark {
@@ -158,6 +159,14 @@
   flex-wrap: wrap;
 }
 
+.controls > .callout {
+  flex: 1;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .footer {
   border-top: 1px solid var(--border);
   padding-block: var(--space-6);
@@ -181,8 +190,23 @@
 .footer__links {
   display: flex;
   gap: var(--space-4);
+  align-items: center;
   font-size: 0.8125rem;
   flex-wrap: wrap;
+}
+
+.footer__text p + p {
+  margin-top: var(--space-2);
+}
+
+.footer__text .footer__links {
+  margin-top: var(--space-3);
+}
+
+@media (width <= 560px) {
+  .overview {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (width <= 720px) {
@@ -201,5 +225,14 @@
 
   .country-stats {
     gap: var(--space-4);
+  }
+
+  .topbar__inner {
+    align-items: flex-start;
+  }
+
+  .topbar__actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
