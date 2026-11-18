@@ -1,7 +1,8 @@
 import type { CountryCode, Histories, PriceObservation, StockObservation } from '../core/types';
 import { COUNTRY_CODES } from '../core/types';
 import { isFiniteNumber, isNonNegativeNumber, isPositiveInteger, isRecord } from '../core/json';
-import { sanitizePriceObservations, sanitizeStockObservations } from '../domain/prediction';
+import { sanitizePriceObservations } from '../domain/prediction';
+import { sanitizeStockObservations } from '../domain/stock-history';
 import type { StorageAdapter } from './storage';
 import { STORAGE_KEYS } from './keys';
 

@@ -98,6 +98,7 @@ export interface PriceObservation {
 export interface StockForecast {
   status: StockStatus;
   expectedStock: number | null;
+  nextRestockAt: number | null;
   confidence: Confidence;
   sellRatePerHour: number | null;
   restockSize: number | null;

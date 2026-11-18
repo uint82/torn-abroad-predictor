@@ -11,8 +11,9 @@ import type {
 } from '../core/types';
 import { getDestination, oneWayMinutes } from './destinations';
 import { groupForType } from './item-groups';
-import { forecastStock, predictPriceTrend } from './prediction';
+import { predictPriceTrend } from './prediction';
 import { feePercentFor, isValidAmount, netSalePrice, unitProfit } from './profit';
+import { forecastStock } from './restock';
 
 export interface BuildRowsOptions {
   country: CountryCode;

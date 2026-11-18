@@ -9,6 +9,7 @@ export function makeForecast(overrides: Partial<StockForecast> = {}): StockForec
   return {
     status: 'unknown',
     expectedStock: null,
+    nextRestockAt: null,
     confidence: 'low',
     sellRatePerHour: null,
     restockSize: null,
