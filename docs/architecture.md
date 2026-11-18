@@ -49,7 +49,7 @@ A stock fetch failure keeps the last cached snapshot. A catalog failure keeps th
 
 ## API key lifecycle
 
-The key is read from local storage at startup and stored in `AppState` so the UI can mask and remove it. Saving a key validates it with a catalog request before live quotes are requested. Removing a key clears the key and quote cache, stops quote refreshes, and keeps the catalog and stock data.
+The key is read from local storage at startup and stored in `AppState` so the UI can mask and remove it. Saving a key aborts an in-flight catalog check, validates the new key with a catalog request, then requests live quotes. While the key is invalid, automatic refreshes skip catalog and quote requests. A manual refresh may retry once so a paused or jailed key can recover without being re-entered. Removing a key clears the key and quote cache, stops quote refreshes, and keeps the catalog and stock data.
 
 The key is sent only to `api.torn.com` as the `Authorization` header. Requests to YATA never include it.
 
@@ -63,7 +63,7 @@ The URL carries the selected country, group filter, sort key, and stock toggle. 
 
 ## Failure handling
 
-The API layer wraps network failures, timeouts, malformed responses, and Torn error codes in typed errors. The UI shows a short message and keeps whatever data is still usable.
+The API layer wraps network failures, timeouts, malformed responses, and Torn error codes in typed errors. Network messages name the failing host, so a YATA outage is not mistaken for a Torn key problem. The UI shows a short message and keeps whatever data is still usable.
 
 Abort controllers cancel in-flight stock, catalog, and quote requests when the user changes country, saves a key, or stops the service. Aborted requests are ignored rather than reported as failures.
 

@@ -13,7 +13,9 @@ Base URL: `https://api.torn.com/v2`
 
 Authentication uses the `Authorization: ApiKey <key>` header. The key is optional. Without one, the app skips live quotes and uses catalog prices.
 
-Torn returns an error envelope with a numeric code and message. The app treats code 2 as an invalid key and code 16 as an access problem, then surfaces the message in the key flow. Other API errors are shown as a general data error.
+Torn returns an error envelope with a numeric code and message. The app treats codes 1, 2, 10, 13, 16, and 18 as unusable-key errors. That covers empty, incorrect, jailed, inactive, insufficient access, and paused keys. The key flow shows Torn's message, and automatic refreshes stop until the key is replaced or a manual refresh succeeds. Other API errors are shown as a general data error.
+
+Network failures name the host that could not be reached, so a YATA outage is not reported as a Torn key problem. The app sends the key in the `Authorization` header, which is not exposed in URLs or proxy logs.
 
 The documented limit is 100 requests per minute per key or 5000 per minute per IP. The app limits quote requests to 60 item IDs and gates them at 90 requests per minute, leaving room for the catalog request and retries.
 
@@ -25,7 +27,7 @@ Endpoint: `https://yata.yt/api/v1/travel/export/`
 
 The response contains an `update` timestamp and a `stocks` object keyed by country code. Each country lists item IDs, names, quantities, and shop costs.
 
-YATA data has no authentication and is fetched on every stock refresh. The app accepts a response only when the shape passes `decodeYataResponse`. Invalid countries or items are skipped rather than failing the whole refresh.
+YATA data has no authentication and is fetched on every stock refresh. The app accepts a response only when the shape passes `parseTravelExport`. Invalid countries or items are skipped rather than failing the whole refresh.
 
 YATA updates its export roughly once per minute. The app treats a stock snapshot as fresh for 60 seconds, usable for 24 hours, and stale beyond that. A failed fetch keeps the previous snapshot when one exists.
 

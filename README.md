@@ -56,9 +56,13 @@ Run `npm run format`, `npm run lint`, `npm run typecheck`, `npm test`, and `npm 
 
 A Torn API key unlocks live item market prices. The key is stored in `localStorage` under this site origin and sent only to `api.torn.com` as the `Authorization` header. It is never sent to YATA or any other host.
 
-Use a limited key if you prefer. The app needs the market permission for live quotes, and the key validation step uses the Torn API.
+A public access or limited key is enough. A custom key must include the market selection for live item prices. The key validation step uses the Torn API.
 
 Open the key dialog in the app to remove the stored key at any time. See `PRIVACY.md` for the full disclosure.
+
+## Troubleshooting
+
+If the app says it cannot reach `api.torn.com`, the browser or a content blocker stopped the request. Open the browser console and check for a CORS or `NetworkError` message, then allow the site in any blocker or privacy extension. Torn allows cross-origin requests from `localhost` and GitHub Pages, so `localhost` by itself is not the cause. If the message names `yata.yt`, Torn is reachable and the stock source is the problem.
 
 ## Deployment
 
