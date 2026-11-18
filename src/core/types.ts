@@ -99,7 +99,12 @@ export interface StockForecast {
   status: StockStatus;
   expectedStock: number | null;
   nextRestockAt: number | null;
+  nextRestockEarliestAt: number | null;
+  nextRestockLatestAt: number | null;
+  arrivalStockChance: number | null;
   confidence: Confidence;
+  restockConfidence: Confidence;
+  restockSamples: number;
   sellRatePerHour: number | null;
   restockSize: number | null;
   horizonMinutes: number;

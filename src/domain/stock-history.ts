@@ -1,6 +1,7 @@
 import type { StockObservation } from '../core/types';
 import { DAY_MS, HOUR_MS, MINUTE_MS, SECOND_MS } from '../core/time';
 import { nextRestockTick, RESTOCK_INTERVAL_MS } from './restock-ticks';
+import { median } from './statistics';
 
 export const HISTORY_WINDOW_MS = DAY_MS;
 export const MIN_OBSERVATION_GAP_MS = 30 * SECOND_MS;
@@ -66,23 +67,6 @@ function buildIntervals(observations: readonly StockObservation[]): Interval[] {
     });
   }
   return intervals;
-}
-
-export function median(values: readonly number[]): number | null {
-  if (values.length === 0) {
-    return null;
-  }
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    const lower = sorted[middle - 1];
-    const upper = sorted[middle];
-    if (lower === undefined || upper === undefined) {
-      return null;
-    }
-    return (lower + upper) / 2;
-  }
-  return sorted[middle] ?? null;
 }
 
 export function estimateSellRatePerHour(observations: readonly StockObservation[]): number | null {

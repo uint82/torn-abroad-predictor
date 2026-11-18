@@ -297,3 +297,105 @@ describe('forecastStock', () => {
     expect(forecast.expectedStock).toBe(12);
   });
 });
+
+describe('restock uncertainty', () => {
+  it('uses measured restock lag over half the sellout duration', () => {
+    const forecast = forecastStock(
+      [
+        { at: at(6), quantity: 0 },
+        { at: at(6, 15), quantity: 60 },
+        { at: at(8, 15), quantity: 0 },
+        { at: at(8, 30), quantity: 60 },
+        { at: at(10, 30), quantity: 0 },
+        { at: at(10, 45), quantity: 60 },
+        { at: at(12, 45), quantity: 0 },
+      ],
+      { now: at(12, 45), horizonMinutes: 15 },
+    );
+    expect(forecast.nextRestockAt).toBe(at(13));
+    expect(forecast.nextRestockEarliestAt).toBe(at(13));
+    expect(forecast.nextRestockLatestAt).toBe(at(13));
+    expect(forecast.restockSamples).toBe(2);
+    expect(forecast.restockConfidence).toBe('low');
+    expect(forecast.arrivalStockChance).toBe(1);
+  });
+
+  it('reports a window from measured lag spread', () => {
+    const forecast = forecastStock(
+      [
+        { at: at(6), quantity: 0 },
+        { at: at(6, 30), quantity: 60 },
+        { at: at(7), quantity: 0 },
+        { at: at(7, 15), quantity: 60 },
+        { at: at(7, 45), quantity: 0 },
+        { at: at(8, 30), quantity: 60 },
+        { at: at(9), quantity: 0 },
+      ],
+      { now: at(9), horizonMinutes: 60 },
+    );
+    expect(forecast.nextRestockAt).toBe(at(9, 30));
+    expect(forecast.nextRestockEarliestAt).toBe(at(9, 30));
+    expect(forecast.nextRestockLatestAt).toBe(at(9, 45));
+    expect(forecast.restockConfidence).toBe('low');
+    expect(forecast.arrivalStockChance).toBe(1);
+  });
+
+  it('raises restock confidence with more measured restocks', () => {
+    const forecast = forecastStock(
+      [
+        { at: at(6), quantity: 0 },
+        { at: at(6, 15), quantity: 60 },
+        { at: at(7, 15), quantity: 0 },
+        { at: at(7, 30), quantity: 60 },
+        { at: at(8, 30), quantity: 0 },
+        { at: at(8, 45), quantity: 60 },
+        { at: at(9, 45), quantity: 0 },
+        { at: at(10), quantity: 60 },
+        { at: at(11), quantity: 0 },
+      ],
+      { now: at(11), horizonMinutes: 30 },
+    );
+    expect(forecast.nextRestockAt).toBe(at(11, 15));
+    expect(forecast.restockSamples).toBe(3);
+    expect(forecast.restockConfidence).toBe('medium');
+  });
+
+  it('reaches high restock confidence with five measured restocks', () => {
+    const forecast = forecastStock(
+      [
+        { at: at(6), quantity: 0 },
+        { at: at(6, 15), quantity: 60 },
+        { at: at(7, 15), quantity: 0 },
+        { at: at(7, 30), quantity: 60 },
+        { at: at(8, 30), quantity: 0 },
+        { at: at(8, 45), quantity: 60 },
+        { at: at(9, 45), quantity: 0 },
+        { at: at(10), quantity: 60 },
+        { at: at(11), quantity: 0 },
+        { at: at(11, 15), quantity: 60 },
+        { at: at(12, 15), quantity: 0 },
+        { at: at(12, 30), quantity: 60 },
+        { at: at(13, 30), quantity: 0 },
+      ],
+      { now: at(13, 30), horizonMinutes: 30 },
+    );
+    expect(forecast.nextRestockAt).toBe(at(13, 45));
+    expect(forecast.restockSamples).toBe(5);
+    expect(forecast.restockConfidence).toBe('high');
+  });
+
+  it('withholds timing fields when no restock can be timed', () => {
+    const forecast = forecastStock(
+      [
+        { at: at(9), quantity: 50 },
+        { at: at(10), quantity: 40 },
+      ],
+      { now: at(10), horizonMinutes: 60 },
+    );
+    expect(forecast.nextRestockAt).toBeNull();
+    expect(forecast.nextRestockEarliestAt).toBeNull();
+    expect(forecast.nextRestockLatestAt).toBeNull();
+    expect(forecast.restockSamples).toBe(0);
+    expect(forecast.restockConfidence).toBe('low');
+  });
+});
