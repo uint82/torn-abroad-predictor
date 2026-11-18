@@ -1,4 +1,5 @@
-import type { Histories, PriceObservation, StockObservation } from '../core/types';
+import type { CountryCode, Histories, PriceObservation, StockObservation } from '../core/types';
+import { COUNTRY_CODES } from '../core/types';
 import { isFiniteNumber, isNonNegativeNumber, isPositiveInteger, isRecord } from '../core/json';
 import { sanitizePriceObservations, sanitizeStockObservations } from '../domain/prediction';
 import type { StorageAdapter } from './storage';
@@ -75,11 +76,42 @@ function pruneMap<T extends { at: number }>(
   return result;
 }
 
+function pruneStockHistories(stock: Histories['stock'], now: number): Histories['stock'] {
+  const result: Histories['stock'] = {};
+  for (const code of COUNTRY_CODES) {
+    const map = stock[code];
+    if (!map) {
+      continue;
+    }
+    const pruned = pruneMap(map, (observations) => sanitizeStockObservations(observations, now));
+    if (Object.keys(pruned).length > 0) {
+      result[code] = pruned;
+    }
+  }
+  return result;
+}
+
+function readStockHistories(value: unknown): Histories['stock'] {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const result: Histories['stock'] = {};
+  for (const code of COUNTRY_CODES) {
+    const country = value[code];
+    if (country === undefined) {
+      continue;
+    }
+    const observations = readObservationMap(country, isStockObservation);
+    if (Object.keys(observations).length > 0) {
+      result[code] = observations;
+    }
+  }
+  return result;
+}
+
 export function pruneHistories(histories: Histories, now: number): Histories {
   return {
-    stock: pruneMap(histories.stock, (observations) =>
-      sanitizeStockObservations(observations, now),
-    ),
+    stock: pruneStockHistories(histories.stock, now),
     prices: pruneMap(histories.prices, (observations) =>
       sanitizePriceObservations(observations, now),
     ),
@@ -93,7 +125,7 @@ export function loadHistories(storage: StorageAdapter, now: number): Histories {
   }
   return pruneHistories(
     {
-      stock: readObservationMap(raw.stock, isStockObservation),
+      stock: readStockHistories(raw.stock),
       prices: readObservationMap(raw.prices, isPriceObservation),
     },
     now,
@@ -106,6 +138,7 @@ export function saveHistories(storage: StorageAdapter, histories: Histories, now
 
 export function recordStockSnapshot(
   histories: Histories,
+  country: CountryCode,
   entries: readonly StockSnapshotEntry[],
   at: number,
   now: number,
@@ -114,12 +147,13 @@ export function recordStockSnapshot(
     return histories;
   }
   const stock = { ...histories.stock };
+  const countryHistory = { ...(stock[country] ?? {}) };
   for (const entry of entries) {
-    const quantity = Math.floor(entry.quantity);
     if (!isPositiveInteger(entry.itemId) || !isNonNegativeNumber(entry.quantity)) {
       continue;
     }
-    const history = stock[entry.itemId] ?? [];
+    const quantity = Math.floor(entry.quantity);
+    const history = countryHistory[entry.itemId] ?? [];
     const latest = history[history.length - 1];
     if (latest && at <= latest.at) {
       continue;
@@ -131,8 +165,9 @@ export function recordStockSnapshot(
     if (unchanged) {
       continue;
     }
-    stock[entry.itemId] = [...history, { at, quantity }];
+    countryHistory[entry.itemId] = [...history, { at, quantity }];
   }
+  stock[country] = countryHistory;
   return pruneHistories({ stock, prices: histories.prices }, now);
 }
 

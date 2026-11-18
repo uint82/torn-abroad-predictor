@@ -191,7 +191,7 @@ export interface TripPlan {
 }
 
 export interface Histories {
-  stock: Record<number, StockObservation[]>;
+  stock: Partial<Record<CountryCode, Record<number, StockObservation[]>>>;
   prices: Record<number, PriceObservation[]>;
 }
 

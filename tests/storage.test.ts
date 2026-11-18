@@ -216,9 +216,21 @@ describe('cache', () => {
 describe('history', () => {
   it('stores a changed quantity immediately', () => {
     const histories: Histories = { stock: {}, prices: {} };
-    const first = recordStockSnapshot(histories, [{ itemId: 1, quantity: 50 }], at(9), at(9));
-    const second = recordStockSnapshot(first, [{ itemId: 1, quantity: 40 }], at(9, 1), at(9, 1));
-    expect(second.stock[1]).toEqual([
+    const first = recordStockSnapshot(
+      histories,
+      'jap',
+      [{ itemId: 1, quantity: 50 }],
+      at(9),
+      at(9),
+    );
+    const second = recordStockSnapshot(
+      first,
+      'jap',
+      [{ itemId: 1, quantity: 40 }],
+      at(9, 1),
+      at(9, 1),
+    );
+    expect(second.stock.jap?.[1]).toEqual([
       { at: at(9), quantity: 50 },
       { at: at(9, 1), quantity: 40 },
     ]);
@@ -227,47 +239,64 @@ describe('history', () => {
   it('skips an unchanged quantity inside the gap', () => {
     const histories = recordStockSnapshot(
       { stock: {}, prices: {} },
+      'jap',
       [{ itemId: 1, quantity: 50 }],
       at(9),
       at(9),
     );
-    const next = recordStockSnapshot(histories, [{ itemId: 1, quantity: 50 }], at(9, 1), at(9, 1));
-    expect(next.stock[1]).toHaveLength(1);
+    const next = recordStockSnapshot(
+      histories,
+      'jap',
+      [{ itemId: 1, quantity: 50 }],
+      at(9, 1),
+      at(9, 1),
+    );
+    expect(next.stock.jap?.[1]).toHaveLength(1);
   });
 
   it('keeps an unchanged quantity after the gap', () => {
     const histories = recordStockSnapshot(
       { stock: {}, prices: {} },
+      'jap',
       [{ itemId: 1, quantity: 50 }],
       at(9),
       at(9),
     );
-    const next = recordStockSnapshot(histories, [{ itemId: 1, quantity: 50 }], at(9, 5), at(9, 5));
-    expect(next.stock[1]).toHaveLength(2);
+    const next = recordStockSnapshot(
+      histories,
+      'jap',
+      [{ itemId: 1, quantity: 50 }],
+      at(9, 5),
+      at(9, 5),
+    );
+    expect(next.stock.jap?.[1]).toHaveLength(2);
   });
 
   it('ignores observations that go backwards', () => {
     const histories = recordStockSnapshot(
       { stock: {}, prices: {} },
+      'jap',
       [{ itemId: 1, quantity: 50 }],
       at(9),
       at(9),
     );
-    const next = recordStockSnapshot(histories, [{ itemId: 1, quantity: 40 }], at(8), at(9));
-    expect(next.stock[1]).toEqual([{ at: at(9), quantity: 50 }]);
+    const next = recordStockSnapshot(histories, 'jap', [{ itemId: 1, quantity: 40 }], at(8), at(9));
+    expect(next.stock.jap?.[1]).toEqual([{ at: at(9), quantity: 50 }]);
   });
 
   it('prunes old observations and invalid entries', () => {
     const histories: Histories = {
       stock: {
-        1: [
-          { at: at(9), quantity: 50 },
-          { at: at(9) - 25 * 60 * 60 * 1000, quantity: 10 },
-        ],
+        jap: {
+          1: [
+            { at: at(9), quantity: 50 },
+            { at: at(9) - 25 * 60 * 60 * 1000, quantity: 10 },
+          ],
+        },
       },
       prices: {},
     };
-    expect(pruneHistories(histories, at(10)).stock[1]).toEqual([{ at: at(9), quantity: 50 }]);
+    expect(pruneHistories(histories, at(10)).stock.jap?.[1]).toEqual([{ at: at(9), quantity: 50 }]);
   });
 
   it('caps the number of observations', () => {
@@ -275,10 +304,10 @@ describe('history', () => {
       at: at(9) + index * 60_000,
       quantity: 50,
     }));
-    const histories: Histories = { stock: { 1: entries }, prices: {} };
+    const histories: Histories = { stock: { jap: { 1: entries } }, prices: {} };
     const pruned = pruneHistories(histories, at(15));
-    expect(pruned.stock[1]).toHaveLength(MAX_OBSERVATIONS);
-    expect(pruned.stock[1]?.[0]?.at).toBe(at(9) + 5 * 60_000);
+    expect(pruned.stock.jap?.[1]).toHaveLength(MAX_OBSERVATIONS);
+    expect(pruned.stock.jap?.[1]?.[0]?.at).toBe(at(9) + 5 * 60_000);
   });
 
   it('records a changed price immediately', () => {
@@ -328,16 +357,16 @@ describe('history', () => {
     const storage = memoryStorage();
     const now = at(10);
     const histories: Histories = {
-      stock: { 1: [{ at: at(9), quantity: 50 }] },
+      stock: { jap: { 1: [{ at: at(9), quantity: 50 }] } },
       prices: { 1: [{ at: at(9), price: 100 }] },
     };
     expect(saveHistories(storage, histories, now)).toBe(true);
     const loaded = loadHistories(storage, now);
-    expect(loaded.stock[1]).toEqual([{ at: at(9), quantity: 50 }]);
+    expect(loaded.stock.jap?.[1]).toEqual([{ at: at(9), quantity: 50 }]);
     expect(loaded.prices[1]).toEqual([{ at: at(9), price: 100 }]);
 
     storage.write(STORAGE_KEYS.histories, {
-      stock: { 2: [{ at: at(9), quantity: 'many' }] },
+      stock: { jap: { 2: [{ at: at(9), quantity: 'many' }] } },
       prices: { 2: [{ at: at(9), price: -1 }] },
     });
     expect(loadHistories(storage, now)).toEqual({ stock: {}, prices: {} });

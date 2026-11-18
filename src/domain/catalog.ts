@@ -96,8 +96,12 @@ export function buildItemRows(options: BuildRowsOptions): ItemRow[] {
 
     const stockAt = stockItem ? (options.stock?.updatedAt ?? options.now) : options.now;
     const stockHistory = stockItem
-      ? withCurrentStock(options.histories.stock[itemId] ?? [], stockItem.quantity, stockAt)
-      : (options.histories.stock[itemId] ?? []);
+      ? withCurrentStock(
+          options.histories.stock[options.country]?.[itemId] ?? [],
+          stockItem.quantity,
+          stockAt,
+        )
+      : (options.histories.stock[options.country]?.[itemId] ?? []);
 
     rows.push({
       itemId,

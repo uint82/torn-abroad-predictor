@@ -139,7 +139,7 @@ describe('buildItemRows', () => {
 
   it('forecasts from stored observations plus the current stock', () => {
     const histories: Histories = {
-      stock: { 1: [{ at: at(9), quantity: 100 }] },
+      stock: { jap: { 1: [{ at: at(9), quantity: 100 }] } },
       prices: {},
     };
     const row = build({ histories }).find((entry) => entry.itemId === 1);
@@ -150,7 +150,7 @@ describe('buildItemRows', () => {
 
   it('adds the current observation only once', () => {
     const histories: Histories = {
-      stock: { 1: [{ at: at(10), quantity: 5 }] },
+      stock: { jap: { 1: [{ at: at(10), quantity: 5 }] } },
       prices: {},
     };
     const row = build({ histories }).find((entry) => entry.itemId === 1);
