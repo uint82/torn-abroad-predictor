@@ -78,7 +78,7 @@ export function createSettingsDialog(actions: SettingsDialogActions): SettingsDi
     el('div', { className: 'form-grid' }, [
       field('Method', method, 'Airstrip and WLT flights are free. Business uses your ticket cost.'),
       field('Suitcase capacity', capacity, 'Base is 28. A large suitcase raises it to 43.'),
-      field('Business ticket cost', ticket, 'Total paid for the round trip, in dollars.'),
+      field('Business ticket cost', ticket, 'Price for one leg. The return leg is charged too.'),
       toggleField('Mailing Yourself Abroad', book),
     ]),
   ]);
