@@ -34,5 +34,22 @@
     "typescript-eslint": "^8.73.0",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uint82/torn-abroad-predictor.git"
+  },
+  "homepage": "https://github.com/uint82/torn-abroad-predictor#readme",
+  "bugs": {
+    "url": "https://github.com/uint82/torn-abroad-predictor/issues"
+  },
+  "keywords": [
+    "torn",
+    "torn-city",
+    "torn-api",
+    "profit",
+    "travel",
+    "vite",
+    "typescript"
+  ]
 }
