@@ -7,7 +7,7 @@ export const YATA_TRAVEL_URL = 'https://yata.yt/api/v1/travel/export/';
 export class YataClient {
   readonly #http: HttpClient;
 
-  constructor(http: HttpClient = new HttpClient()) {
+  constructor(http: HttpClient = new HttpClient({ target: 'yata.yt' })) {
     this.#http = http;
   }
 

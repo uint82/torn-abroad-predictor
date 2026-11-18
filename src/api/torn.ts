@@ -67,7 +67,7 @@ export class TornClient {
       throw new AppError('Enter a Torn API key first.');
     }
     this.#key = trimmed;
-    this.#http = options.http ?? new HttpClient();
+    this.#http = options.http ?? new HttpClient({ target: 'api.torn.com' });
     this.#limiter =
       options.limiter ?? new RateLimiter({ max: TORN_REQUESTS_PER_MINUTE, windowMs: 60_000 });
   }

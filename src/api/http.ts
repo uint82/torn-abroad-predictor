@@ -19,6 +19,7 @@ export interface HttpClientOptions {
   timeoutMs?: number;
   retries?: number;
   retryBaseMs?: number;
+  target?: string;
 }
 
 export interface HttpRequestOptions {
@@ -41,12 +42,14 @@ export class HttpClient {
   readonly #timeoutMs: number;
   readonly #retries: number;
   readonly #retryBaseMs: number;
+  readonly #target: string;
 
   constructor(options: HttpClientOptions = {}) {
     this.#fetchImpl = options.fetchImpl ?? fetch;
     this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.#retries = options.retries ?? DEFAULT_RETRIES;
     this.#retryBaseMs = options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
+    this.#target = options.target ?? 'the API';
   }
 
   async json<T>(url: string, options: HttpRequestOptions = {}): Promise<T> {
@@ -85,12 +88,22 @@ export class HttpClient {
         throw abortError(options.signal);
       }
       if (controller.signal.aborted) {
-        throw new ApiError('The request timed out.', NETWORK_ERROR_CODE, true, { cause: error });
+        throw new ApiError(
+          `The request to ${this.#target} timed out. Try again.`,
+          NETWORK_ERROR_CODE,
+          true,
+          { cause: error },
+        );
       }
       if (isAbortError(error)) {
         throw error;
       }
-      throw new ApiError('Could not reach the API.', NETWORK_ERROR_CODE, true, { cause: error });
+      throw new ApiError(
+        `Could not reach ${this.#target}. Check your connection or content blocker.`,
+        NETWORK_ERROR_CODE,
+        true,
+        { cause: error },
+      );
     } finally {
       clearTimeout(timer);
       options.signal?.removeEventListener('abort', onAbort);
@@ -106,7 +119,7 @@ export class HttpClient {
       try {
         payload = JSON.parse(body);
       } catch (error) {
-        throw new AppError('The API returned invalid JSON.', { cause: error });
+        throw new AppError(`${this.#target} returned invalid JSON.`, { cause: error });
       }
     }
 
@@ -121,7 +134,7 @@ export class HttpClient {
 
     if (!response.ok) {
       throw new ApiError(
-        `The API returned HTTP ${response.status}.`,
+        `Request to ${this.#target} failed with HTTP ${response.status}.`,
         response.status,
         response.status >= 500,
       );

@@ -93,10 +93,29 @@ describe('HttpClient', () => {
       retryBaseMs: 0,
     });
 
-    await expect(http.json('https://example.test')).rejects.toSatisfy(
-      (error: unknown) => error instanceof ApiError && error.code === 0,
-    );
+    await expect(http.json('https://example.test')).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 0,
+      message: 'Could not reach the API. Check your connection or content blocker.',
+    });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('names the endpoint in a network failure', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    const http = new HttpClient({
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      target: 'api.torn.com',
+      retries: 0,
+    });
+
+    await expect(http.json('https://api.torn.com/v2/torn/items')).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 0,
+      message: 'Could not reach api.torn.com. Check your connection or content blocker.',
+    });
   });
 
   it('times out a stalled request', async () => {
@@ -116,7 +135,7 @@ describe('HttpClient', () => {
 
     await expect(http.json('https://example.test')).rejects.toMatchObject({
       name: 'ApiError',
-      message: 'The request timed out.',
+      message: 'The request to the API timed out. Try again.',
     });
   });
 
