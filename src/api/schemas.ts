@@ -1,4 +1,5 @@
 import { ShapeError } from '../core/errors';
+import { isRecord } from '../core/json';
 import type {
   CatalogItem,
   CatalogShop,
@@ -13,10 +14,6 @@ import { COUNTRY_CODES } from '../core/types';
 export interface ApiErrorPayload {
   code: number;
   message: string;
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function record(value: unknown, path: string): Record<string, unknown> {
