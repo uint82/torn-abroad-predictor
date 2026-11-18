@@ -45,7 +45,7 @@ export class HttpClient {
   readonly #target: string;
 
   constructor(options: HttpClientOptions = {}) {
-    this.#fetchImpl = options.fetchImpl ?? fetch;
+    this.#fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis);
     this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.#retries = options.retries ?? DEFAULT_RETRIES;
     this.#retryBaseMs = options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;

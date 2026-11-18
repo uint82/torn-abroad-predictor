@@ -28,6 +28,18 @@ describe('HttpClient', () => {
     });
   });
 
+  it('calls fetch with the global receiver', async () => {
+    const fetchImpl = function (this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      return Promise.resolve(jsonResponse({ ok: true }));
+    };
+    const http = new HttpClient({ fetchImpl: fetchImpl as unknown as typeof fetch });
+
+    await expect(http.json('https://example.test')).resolves.toEqual({ ok: true });
+  });
+
   it('turns the Torn error envelope into an ApiError', async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({ error: { code: 2, error: 'Incorrect key' } }),
