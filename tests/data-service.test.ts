@@ -133,6 +133,83 @@ describe('DataService', () => {
     expect(store.get().catalogStatus).toBe('error');
   });
 
+  it('flags a paused key', async () => {
+    const torn = makeTornClient({
+      getCatalog: async () => {
+        throw new ApiError('API key has been paused by the owner.', 18, false);
+      },
+    });
+    const { store, service } = makeService({ apiKey: 'paused', torn });
+    await service.refreshCatalog(true);
+
+    expect(store.get().keyStatus).toBe('invalid');
+    expect(store.get().keyMessage).toBe('API key has been paused by the owner.');
+  });
+
+  it('does not reuse an invalid key during automatic refresh', async () => {
+    const getCatalog = vi.fn(async () => {
+      throw new ApiError('Invalid key.', 2, false);
+    });
+    const getQuotes = vi.fn(async () => ({ quotes: {}, failures: [] }));
+    const torn = makeTornClient({ getCatalog, getQuotes });
+    const { store, service } = makeService({ apiKey: 'bad', torn });
+
+    await service.refreshAll(false);
+    expect(store.get().keyStatus).toBe('invalid');
+    expect(getCatalog).toHaveBeenCalledTimes(1);
+
+    await service.refreshAll(false);
+    expect(getCatalog).toHaveBeenCalledTimes(1);
+    expect(getQuotes).not.toHaveBeenCalled();
+  });
+
+  it('stops quote refreshes after the key becomes invalid', async () => {
+    const getQuotes = vi.fn(async () => {
+      throw new ApiError('Invalid key.', 2, false);
+    });
+    const torn = makeTornClient({ getQuotes });
+    const { store, service } = makeService({ apiKey: 'bad', torn, withCatalog: true });
+
+    await service.refreshAll(true);
+    expect(store.get().keyStatus).toBe('invalid');
+    expect(getQuotes).toHaveBeenCalledTimes(1);
+
+    await service.refreshAll(false);
+    expect(getQuotes).toHaveBeenCalledTimes(1);
+  });
+
+  it('replaces an in-flight catalog request when saving a key', async () => {
+    let calls = 0;
+    let firstSignal: AbortSignal | undefined;
+    const torn = makeTornClient({
+      getCatalog: async (signal) => {
+        calls += 1;
+        if (calls === 1) {
+          firstSignal = signal;
+          await new Promise<void>((_, reject) => {
+            signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            );
+          });
+        }
+        return catalog;
+      },
+    });
+    const { store, service } = makeService({ apiKey: 'old', torn });
+
+    const first = service.refreshCatalog(true);
+    await Promise.resolve();
+    const saving = service.saveKey('new');
+    await first;
+    await saving;
+
+    expect(firstSignal?.aborted).toBe(true);
+    expect(calls).toBe(2);
+    expect(store.get().keyStatus).toBe('valid');
+  });
+
   it('refreshes quotes after the catalog is ready', async () => {
     const getQuotes = vi.fn(async () => ({
       quotes: { 1: quote },

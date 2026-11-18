@@ -1,4 +1,4 @@
-import { errorMessage, isAbortError, ApiError } from '../core/errors';
+import { errorMessage, isAbortError, isKeyError } from '../core/errors';
 import type { StorageAdapter } from '../storage/storage';
 import { isCacheFresh } from '../storage/cache';
 import { saveHistories } from '../storage/history';
@@ -15,10 +15,6 @@ export interface QuoteServiceOptions {
   storage: StorageAdapter;
   getClient: () => CatalogClient | null;
   now?: () => number;
-}
-
-function isKeyError(error: unknown): boolean {
-  return error instanceof ApiError && (error.code === 2 || error.code === 16);
 }
 
 export class QuoteService {
@@ -45,6 +41,9 @@ export class QuoteService {
       return;
     }
     const state = this.#store.get();
+    if (state.keyStatus === 'invalid') {
+      return;
+    }
     const now = this.#now();
     if (state.catalog.length === 0) {
       return;

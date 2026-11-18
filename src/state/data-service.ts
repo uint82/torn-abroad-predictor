@@ -1,5 +1,5 @@
 import type { CountryCode, Filters, Settings } from '../core/types';
-import { ApiError, errorMessage, isAbortError } from '../core/errors';
+import { errorMessage, isAbortError, isKeyError } from '../core/errors';
 import { TornClient } from '../api/torn';
 import { YataClient } from '../api/yata';
 import type { StorageAdapter } from '../storage/storage';
@@ -26,10 +26,6 @@ export interface DataServiceOptions {
   createTornClient?: (key: string) => CatalogClient;
   createStockClient?: () => StockClient;
   now?: () => number;
-}
-
-function isKeyError(error: unknown): boolean {
-  return error instanceof ApiError && (error.code === 2 || error.code === 16);
 }
 
 export class DataService {
@@ -82,11 +78,12 @@ export class DataService {
 
   async refreshAll(force: boolean): Promise<void> {
     const tasks: Promise<void>[] = [this.refreshStock(force)];
-    if (this.#client) {
+    const canUseKey = this.#client !== null && (force || this.#store.get().keyStatus !== 'invalid');
+    if (canUseKey) {
       tasks.push(this.refreshCatalog(force));
     }
     await Promise.allSettled(tasks);
-    if (this.#client) {
+    if (canUseKey) {
       await this.#quotes.refresh(force);
     }
   }
@@ -153,7 +150,11 @@ export class DataService {
       return;
     }
     if (this.#catalogAbort) {
-      return;
+      if (!force) {
+        return;
+      }
+      // A forced check follows a user action, so replace the stale request.
+      this.#catalogAbort.abort();
     }
     const controller = new AbortController();
     this.#catalogAbort = controller;

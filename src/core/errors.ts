@@ -27,6 +27,14 @@ export class ShapeError extends AppError {
   }
 }
 
+// Torn reports a key as unusable for several reasons: invalid, jailed owner,
+// inactivity, insufficient access, or a paused key. All of them need the owner.
+const UNUSABLE_KEY_CODES: ReadonlySet<number> = new Set([1, 2, 10, 13, 16, 18]);
+
+export function isKeyError(error: unknown): boolean {
+  return error instanceof ApiError && UNUSABLE_KEY_CODES.has(error.code);
+}
+
 export function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
