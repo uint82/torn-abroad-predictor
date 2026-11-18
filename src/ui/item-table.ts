@@ -7,6 +7,8 @@ import {
   formatSignedMoney,
   formatSignedPercent,
   formatStock,
+  formatTctDateTime,
+  formatTctTime,
 } from './format';
 import { icon } from './icons';
 
@@ -24,6 +26,7 @@ const COLUMNS: readonly { label: string; sort: SortKey | null }[] = [
   { label: 'Item', sort: 'name' },
   { label: 'Buy', sort: 'buy' },
   { label: 'Stock', sort: 'stock' },
+  { label: 'Restock', sort: null },
   { label: 'Market', sort: 'market' },
   { label: 'Net sale', sort: null },
   { label: 'Unit profit', sort: 'profit' },
@@ -130,6 +133,27 @@ function stockCell(row: ItemRow, now: number): HTMLTableCellElement {
   return cell;
 }
 
+function restockCell(row: ItemRow, now: number): HTMLTableCellElement {
+  const cell = el('td');
+  const timestamp = row.forecast.nextRestockAt;
+  if (timestamp === null) {
+    cell.append(
+      el('span', {
+        className: 'items-table__restock items-table__restock--unknown',
+        text: 'n/a',
+      }),
+    );
+    return cell;
+  }
+  const value = el('span', {
+    className: 'items-table__restock',
+    text: formatTctTime(timestamp),
+  });
+  value.title = `Estimated restock ${formatTctDateTime(timestamp)} (${formatRelative(timestamp, now)}).`;
+  cell.append(value);
+  return cell;
+}
+
 function trendCell(row: ItemRow): HTMLTableCellElement {
   const { trend } = row;
   const cell = el('td');
@@ -223,6 +247,7 @@ export function createItemTable(actions: ItemTableActions): ItemTableView {
               ]),
               numberCell(formatMoney(row.buyPrice)),
               stockCell(row, now),
+              restockCell(row, now),
               numberCell(formatMoney(row.salePrice)),
               numberCell(formatMoney(row.netSalePrice)),
               numberCell(unitProfit, `items-table__profit ${profitClass}`.trim()),

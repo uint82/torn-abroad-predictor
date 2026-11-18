@@ -1,5 +1,23 @@
 const MONEY = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const DECIMAL = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+function padTwo(value: number): string {
+  return value.toString().padStart(2, '0');
+}
 
 export function formatNumber(value: number | null | undefined, digits = 0): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -89,6 +107,23 @@ export function formatDateTime(timestamp: number | null | undefined): string {
     minute: '2-digit',
     timeZoneName: 'short',
   });
+}
+
+export function formatTctTime(timestamp: number | null | undefined): string {
+  if (timestamp === null || timestamp === undefined || !Number.isFinite(timestamp)) {
+    return 'n/a';
+  }
+  const date = new Date(timestamp);
+  return `${padTwo(date.getUTCHours())}:${padTwo(date.getUTCMinutes())} TCT`;
+}
+
+export function formatTctDateTime(timestamp: number | null | undefined): string {
+  if (timestamp === null || timestamp === undefined || !Number.isFinite(timestamp)) {
+    return 'n/a';
+  }
+  const date = new Date(timestamp);
+  const month = MONTHS[date.getUTCMonth()] ?? '';
+  return `${date.getUTCDate()} ${month} ${date.getUTCFullYear()}, ${formatTctTime(timestamp)}`;
 }
 
 export function formatStock(value: number | null | undefined): string {

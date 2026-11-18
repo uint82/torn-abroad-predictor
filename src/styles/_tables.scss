@@ -5,7 +5,7 @@
 
 .items-table {
   width: 100%;
-  min-width: 880px;
+  min-width: 980px;
   font-size: 0.8125rem;
 
   th,
@@ -132,6 +132,16 @@
     &--empty {
       color: var(--negative);
     }
+
+    &--unknown {
+      color: var(--text-faint);
+    }
+  }
+
+  &__restock {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
 
     &--unknown {
       color: var(--text-faint);

@@ -9,6 +9,8 @@ import {
   formatSignedMoney,
   formatSignedPercent,
   formatStock,
+  formatTctDateTime,
+  formatTctTime,
 } from '../src/ui/format';
 
 describe('format', () => {
@@ -62,6 +64,14 @@ describe('format', () => {
   it('formats a date', () => {
     expect(formatDateTime(null)).toBe('n/a');
     expect(formatDateTime(Date.UTC(2026, 0, 1, 9))).toContain('2026');
+  });
+
+  it('formats Torn City Time in UTC', () => {
+    expect(formatTctTime(Date.UTC(2026, 0, 1, 0, 5))).toBe('00:05 TCT');
+    expect(formatTctTime(Date.UTC(2026, 0, 1, 23, 45))).toBe('23:45 TCT');
+    expect(formatTctTime(null)).toBe('n/a');
+    expect(formatTctDateTime(Date.UTC(2026, 0, 1, 23, 45))).toBe('1 Jan 2026, 23:45 TCT');
+    expect(formatTctDateTime(Number.NaN)).toBe('n/a');
   });
 
   it('formats stock', () => {

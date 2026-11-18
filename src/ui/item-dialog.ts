@@ -8,6 +8,8 @@ import {
   formatSignedMoney,
   formatSignedPercent,
   formatStock,
+  formatTctDateTime,
+  formatTctTime,
 } from './format';
 
 export interface ItemDialogView {
@@ -38,6 +40,15 @@ function detail(label: string, value: string, tone = ''): HTMLElement {
     el('span', { className: 'stat__label', text: label }),
     el('span', { className: `stat__value ${tone}`.trim(), text: value }),
   ]);
+}
+
+function restockDetail(forecast: StockForecast): HTMLElement {
+  const timestamp = forecast.nextRestockAt;
+  const entry = detail('Next restock', timestamp === null ? 'n/a' : formatTctTime(timestamp));
+  if (timestamp !== null) {
+    entry.title = `Estimated restock ${formatTctDateTime(timestamp)}.`;
+  }
+  return entry;
 }
 
 export function createItemDialog(): ItemDialogView {
@@ -91,6 +102,7 @@ export function createItemDialog(): ItemDialogView {
           profitTone,
         ),
         detail('Price trend', trendText(row.trend)),
+        restockDetail(row.forecast),
         detail('Trip pick', pick ? `x${pick.units}` : 'Not in basket'),
         detail('Trip profit', pick ? formatSignedMoney(pick.profit) : '-', tripTone),
       ]);
