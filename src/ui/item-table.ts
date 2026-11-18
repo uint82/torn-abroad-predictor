@@ -7,10 +7,10 @@ import {
   formatSignedMoney,
   formatSignedPercent,
   formatStock,
-  formatTctDateTime,
   formatTctTime,
 } from './format';
 import { icon } from './icons';
+import { restockTooltip } from './restock-format';
 
 export interface ItemTableActions {
   onSelect: (itemId: number) => void;
@@ -137,19 +137,19 @@ function restockCell(row: ItemRow, now: number): HTMLTableCellElement {
   const cell = el('td');
   const timestamp = row.forecast.nextRestockAt;
   if (timestamp === null) {
-    cell.append(
-      el('span', {
-        className: 'items-table__restock items-table__restock--unknown',
-        text: 'n/a',
-      }),
-    );
+    const value = el('span', {
+      className: 'items-table__restock items-table__restock--unknown',
+      text: 'n/a',
+    });
+    value.title = restockTooltip(row.forecast, now);
+    cell.append(value);
     return cell;
   }
   const value = el('span', {
     className: 'items-table__restock',
     text: formatTctTime(timestamp),
   });
-  value.title = `Estimated restock ${formatTctDateTime(timestamp)} (${formatRelative(timestamp, now)}).`;
+  value.title = restockTooltip(row.forecast, now);
   cell.append(value);
   return cell;
 }

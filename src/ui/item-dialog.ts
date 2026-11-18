@@ -8,9 +8,9 @@ import {
   formatSignedMoney,
   formatSignedPercent,
   formatStock,
-  formatTctDateTime,
   formatTctTime,
 } from './format';
+import { formatRestockWindow, restockTooltip } from './restock-format';
 
 export interface ItemDialogView {
   element: HTMLDialogElement;
@@ -42,13 +42,32 @@ function detail(label: string, value: string, tone = ''): HTMLElement {
   ]);
 }
 
-function restockDetail(forecast: StockForecast): HTMLElement {
+function restockDetail(forecast: StockForecast, now: number): HTMLElement {
   const timestamp = forecast.nextRestockAt;
   const entry = detail('Next restock', timestamp === null ? 'n/a' : formatTctTime(timestamp));
-  if (timestamp !== null) {
-    entry.title = `Estimated restock ${formatTctDateTime(timestamp)}.`;
-  }
+  entry.title = restockTooltip(forecast, now);
   return entry;
+}
+
+function arrivalChanceDetail(forecast: StockForecast): HTMLElement {
+  const chance = forecast.arrivalStockChance;
+  const entry = detail(
+    'In stock at arrival',
+    chance === null ? 'n/a' : formatPercent(chance * 100, 0),
+  );
+  entry.title =
+    chance === null
+      ? 'Needs at least two measured restock lags and sellout durations before arrival probability is available.'
+      : 'Model probability that the item is in stock when you arrive.';
+  return entry;
+}
+
+function restockConfidenceDetail(forecast: StockForecast): HTMLElement {
+  const value =
+    forecast.restockSamples === 0
+      ? 'n/a'
+      : `${forecast.restockConfidence} (${forecast.restockSamples} lags)`;
+  return detail('Restock confidence', value);
 }
 
 export function createItemDialog(): ItemDialogView {
@@ -102,7 +121,10 @@ export function createItemDialog(): ItemDialogView {
           profitTone,
         ),
         detail('Price trend', trendText(row.trend)),
-        restockDetail(row.forecast),
+        restockDetail(row.forecast, now),
+        detail('Restock window', formatRestockWindow(row.forecast), 'stat__value--compact'),
+        arrivalChanceDetail(row.forecast),
+        restockConfidenceDetail(row.forecast),
         detail('Trip pick', pick ? `x${pick.units}` : 'Not in basket'),
         detail('Trip profit', pick ? formatSignedMoney(pick.profit) : '-', tripTone),
       ]);
