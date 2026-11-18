@@ -4,16 +4,16 @@ The app is a static Vite site with no server component. Data fetching, storage, 
 
 ## Layers
 
-| Layer         | Responsibility                                                     |
-| ------------- | ------------------------------------------------------------------ |
-| `src/core`    | Shared types, defaults, error classes, JSON guards.                |
-| `src/api`     | Torn and YATA clients, response schemas, timeouts, rate limiting.  |
-| `src/domain`  | Pure calculations: destinations, groups, rows, profit, prediction. |
-| `src/storage` | Local storage adapter, settings, cache, and history persistence.   |
-| `src/state`   | Store, selectors, quote service, and the data refresh service.     |
-| `src/ui`      | DOM construction, dialogs, formatting, URL state.                  |
+| Layer         | Responsibility                                                              |
+| ------------- | --------------------------------------------------------------------------- |
+| `src/core`    | Shared types, defaults, error classes, JSON guards.                         |
+| `src/api`     | Torn and YATA clients, response schemas, timeouts, rate limiting.           |
+| `src/domain`  | Pure calculations: destinations, groups, rows, profit, prediction, restock. |
+| `src/storage` | Local storage adapter, settings, cache, and history persistence.            |
+| `src/state`   | Store, selectors, quote service, and the data refresh service.              |
+| `src/ui`      | DOM construction, dialogs, formatting, URL state.                           |
 
-Dependencies point inward. The domain layer has no DOM or storage imports, which keeps prediction and profit logic testable in Node.
+Dependencies point inward. The domain layer has no DOM or storage imports, which keeps prediction, restock, and profit logic testable in Node.
 
 ## Startup flow
 

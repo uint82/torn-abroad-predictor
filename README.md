@@ -8,7 +8,7 @@ The app runs entirely in the browser. No backend is required, and an API key is 
 
 - Rank all 11 destinations by estimated profit per hour.
 - Compare item shop prices with live item market quotes or cached catalog prices.
-- Estimate current stock, sell rate, and the next restock at arrival.
+- Estimate current stock, sell rate, and the next restock time in TCT.
 - Build a suitcase-sized basket using profit per unit and predicted availability.
 - Adjust travel method, suitcase capacity, sale channel, fees, price basis, and waiting time.
 - Keep catalog, stock, and price history in local storage so a reload is not a cold start.
@@ -19,10 +19,10 @@ The app runs entirely in the browser. No backend is required, and an API key is 
 1. The Torn item catalog supplies item names, types, shop prices, and fallback market prices.
 2. YATA supplies current abroad stock for every country.
 3. When a key is present, Torn item market listings supply live quotes for the selected country.
-4. The domain layer combines those sources into item rows, forecasts stock at arrival, and scores a trip.
+4. The domain layer combines those sources into item rows, forecasts stock at arrival and the next restock time, and scores a trip.
 5. The UI renders the ranked destinations, the selected country basket, and item details.
 
-The stock forecast is a simple model, not a guarantee. It learns sell rate and restock size from recorded YATA snapshots, then simulates 15-minute restock ticks over the flight time. A cold start has no history, so the first visits rely on current stock only.
+The stock forecast is a simple model, not a guarantee. It learns sell rate, restock size, and sellout duration from recorded YATA snapshots. Restock times assume the next restock comes after half the sellout duration, rounded up to a 15-minute TCT tick. A cold start has no history, so the first visits rely on current stock only.
 
 See `docs/architecture.md`, `docs/data-sources.md`, and `docs/prediction.md` for details.
 

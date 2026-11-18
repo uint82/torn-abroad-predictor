@@ -38,10 +38,14 @@ The forecast uses observations recorded from YATA. An observation is one quantit
 Only intervals longer than 30 seconds and shorter than 6 hours are used. Longer gaps are treated as missing data because a restock or a sale could have happened inside the gap.
 
 - Sell rate: total units sold divided by total hours across intervals with a negative delta.
-- Restock size: median of positive deltas, rounded up to at least 1.
-- Restock ticks: every 15 minutes, aligned to the hour.
+- Restock size: median of positive jumps, rounded up to at least 1.
+- Sellout cycle: a zero-to-positive restock until the next zero, when every gap in the cycle is under 6 hours.
+- Restock delay: half the median sellout duration. Torn restocks on quarter-hour ticks, so the estimate moves to the next tick.
+- Next restock time: for an empty item, the latest sellout plus the delay. For a stocked item, project the remaining stock at the current sell rate to a sellout, then add the delay. Estimates over 24 hours away are left blank.
 - Horizon: one-way flight time plus extra waiting time.
-- Simulation: subtract the sell rate until each tick, add a restock if stock reaches zero, then subtract the remaining time to arrival.
+- Simulation: project current stock to now, add a restock at the estimated time, then subtract sales to arrival.
+
+All restock times are shown in Torn City Time. TCT is UTC all year, so the clock does not follow daylight saving. The table shows `HH:mm TCT`; the tooltip and item dialog show the full date.
 
 The result reports one of these states:
 
@@ -52,7 +56,7 @@ The result reports one of these states:
 | `sold-out`         | The item is expected to be empty at arrival.                       |
 | `unknown`          | The snapshot is older than 60 minutes or there is not enough data. |
 
-A forecast older than 60 minutes is not used. An empty current quantity with no restock history is also treated as unknown rather than zero.
+A forecast older than 60 minutes is not used. An empty current quantity with no restock history is also treated as unknown rather than zero. If a restock estimate is already overdue, the next quarter-hour tick is shown instead.
 
 ## Confidence
 
@@ -77,8 +81,10 @@ A change above 2 percent is rising, below -2 percent is falling, and the rest is
 ## Known limits
 
 - History starts empty for a new browser, so early forecasts are weak.
+- Stock history keeps the last 24 hours, so slower sellout cycles cannot be timed.
 - YATA snapshots can miss a restock or contain a manual change.
 - The model assumes a constant sell rate and a stable restock size.
+- One or two sellout cycles can give a noisy restock time.
 - Market prices can move between the quote and the sale.
 - The planner does not model item market undercuts, listing time, or bazaar demand.
 - Flight time and fares are fixed data and must be updated when the game changes.
