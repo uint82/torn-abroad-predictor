@@ -15,6 +15,8 @@ The app is a static Vite site with no server component. Data fetching, storage, 
 
 Dependencies point inward. The domain layer has no DOM or storage imports, which keeps prediction, restock, and profit logic testable in Node.
 
+Restock forecasting is split by responsibility. `stock-history.ts` builds observations, sell rates, and sellout cycles. `restock-timing.ts` measures restock lag and the timing window. `restock-probability.ts` scores arrival stock chance. `restock-simulation.ts` projects stock forward. `restock.ts` combines those pieces into the forecast used by the UI.
+
 ## Startup flow
 
 1. `src/main.ts` reads settings, the API key, cached catalog, cached stock, and price and stock histories.
@@ -69,4 +71,4 @@ Abort controllers cancel in-flight stock, catalog, and quote requests when the u
 
 ## Testing
 
-The Vitest suite covers schemas, HTTP behavior, rate limiting, storage migration and validation, domain math, prediction edge cases, selectors, and data service orchestration. UI code is verified by type checking and production builds; the view layer intentionally stays thin.
+The Vitest suite covers schemas, HTTP behavior, rate limiting, storage migration and validation, domain math, prediction edge cases, restock replay, selectors, and data service orchestration. UI code is verified by type checking and production builds; the view layer intentionally stays thin.

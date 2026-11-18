@@ -40,12 +40,14 @@ Only intervals longer than 30 seconds and shorter than 6 hours are used. Longer 
 - Sell rate: total units sold divided by total hours across intervals with a negative delta.
 - Restock size: median of positive jumps, rounded up to at least 1.
 - Sellout cycle: a zero-to-positive restock until the next zero, when every gap in the cycle is under 6 hours.
-- Restock delay: half the median sellout duration. Torn restocks on quarter-hour ticks, so the estimate moves to the next tick.
-- Next restock time: for an empty item, the latest sellout plus the delay. For a stocked item, project the remaining stock at the current sell rate to a sellout, then add the delay. Estimates over 24 hours away are left blank.
+- Restock lag: time from one sellout to the next restock, measured across consecutive sellout cycles. The median is used once there are at least two lags. With fewer, the fallback is half the median sellout duration.
+- Restock window: the interquartile range of measured lags, snapped to quarter-hour ticks. It is shown only when at least two lags exist. The window is clipped to the 24-hour lookahead.
+- Next restock time: for an empty item, the latest sellout plus the restock lag. For a stocked item, project the remaining stock at the current sell rate to a sellout, then add the lag. Torn restocks on quarter-hour ticks, so the estimate moves to the next tick. A point estimate over 24 hours away is left blank.
+- Arrival stock chance: share of scenario combinations of measured lags and sellout durations that still have stock at arrival. Current stock that covers the whole horizon returns 100 percent. The estimate needs at least two lag samples and two duration samples.
 - Horizon: one-way flight time plus extra waiting time.
-- Simulation: project current stock to now, add a restock at the estimated time, then subtract sales to arrival.
+- Simulation: project current stock to now, add a restock at the estimated time, then subtract sales to arrival. Later restocks use the median sellout duration plus the restock lag.
 
-All restock times are shown in Torn City Time. TCT is UTC all year, so the clock does not follow daylight saving. The table shows `HH:mm TCT`; the tooltip and item dialog show the full date.
+All restock times are shown in Torn City Time. TCT is UTC all year, so the clock does not follow daylight saving. The table shows `HH:mm TCT`; the tooltip and item dialog show the full date, the restock window, and the arrival stock chance.
 
 The result reports one of these states:
 
@@ -60,13 +62,21 @@ A forecast older than 60 minutes is not used. An empty current quantity with no 
 
 ## Confidence
 
-Confidence is a sample-size signal, not a probability.
+Stock confidence and restock confidence are separate signals. Neither one is a probability.
+
+Stock confidence reflects how much history supports the current sell rate:
 
 - High: at least 8 observations over at least 2 hours, with a known sell rate.
 - Medium: at least 3 observations over at least 30 minutes, with a known sell rate.
 - Low: everything else, including stale snapshots.
 
-If the forecast depends on a restock and there are fewer than two restock samples, high confidence is reduced to medium.
+Restock confidence reflects how many measured lags support the timing window:
+
+- High: at least 5 lags and a window of 30 minutes or less.
+- Medium: at least 3 lags and a window of 90 minutes or less.
+- Low: everything else, including no usable window.
+
+If the stock forecast depends on a restock and there are fewer than two measured lags, high stock confidence is reduced to medium.
 
 ## Price trend
 
@@ -82,9 +92,10 @@ A change above 2 percent is rising, below -2 percent is falling, and the rest is
 
 - History starts empty for a new browser, so early forecasts are weak.
 - Stock history keeps the last 24 hours, so slower sellout cycles cannot be timed.
-- YATA snapshots can miss a restock or contain a manual change.
+- YATA snapshots can miss a restock or contain a manual change. One-minute sampling can miss short sellouts.
 - The model assumes a constant sell rate and a stable restock size.
-- One or two sellout cycles can give a noisy restock time.
+- One or two sellout cycles can give a noisy restock time and a wide window.
+- Arrival stock chance assumes measured lag and duration samples represent the next cycles. It has not been calibrated against live outcomes yet.
 - Market prices can move between the quote and the sale.
 - The planner does not model item market undercuts, listing time, or bazaar demand.
 - Flight time and fares are fixed data and must be updated when the game changes.

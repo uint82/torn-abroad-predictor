@@ -46,6 +46,8 @@ Each stock refresh appends one observation per item for every country in the YAT
 
 Stock observations are keyed by timestamp and quantity. Price observations are keyed by timestamp. Duplicate timestamps are collapsed before use.
 
+The forecast uses this local history only. It does not import restock history from YATA or other trackers.
+
 ## Data quality and limits
 
 - A shop price comes from YATA cost first, then the lowest matching catalog shop price.
