@@ -23,8 +23,8 @@ function stockData(now: number, quantity = 5): StockData {
   };
 }
 
-function seed(store: StockStore, now = NOW): void {
-  const diff = diffStock(stockData(now), store.readStates(), now);
+function seed(store: StockStore, now = NOW, quantity = 5): void {
+  const diff = diffStock(stockData(now, quantity), store.readStates(), now);
   store.savePoll(
     {
       collectedAt: now,
@@ -111,6 +111,37 @@ describe('collector API', () => {
     expect(Object.keys(body.items)).toEqual(['1']);
   });
 
+  it('returns only the missing window for incremental requests', async () => {
+    const running = await startApi();
+    const start = at(9);
+    seed(store as StockStore, start, 10);
+    seed(store as StockStore, start + 60 * 60_000, 8);
+    seed(store as StockStore, start + 120 * 60_000, 25);
+
+    const since = start + 90 * 60_000;
+    const response = await fetch(
+      `${running.baseUrl}/api/v1/observations?country=jap&days=1&since=${since}`,
+    );
+    expect(await response.json()).toMatchObject({
+      from: since,
+      to: NOW,
+      items: { 1: [{ at: start + 120 * 60_000, quantity: 25 }] },
+    });
+  });
+
+  it('falls back to a full window when since predates it', async () => {
+    const running = await startApi();
+    seed(store as StockStore);
+    const response = await fetch(
+      `${running.baseUrl}/api/v1/observations?country=jap&days=1&since=1`,
+    );
+    expect(await response.json()).toMatchObject({
+      from: NOW - 86_400_000,
+      to: NOW,
+      items: { 1: [{ at: NOW, quantity: 5 }] },
+    });
+  });
+
   it('rejects invalid query parameters', async () => {
     const running = await startApi();
     const cases = [
@@ -120,6 +151,10 @@ describe('collector API', () => {
       'country=jap&days=1.5',
       'country=jap&itemId=0',
       'country=jap&itemId=abc',
+      'country=jap&since=1.5',
+      'country=jap&since=-1',
+      'country=jap&since=abc',
+      `country=jap&since=${NOW + 1}`,
     ];
     for (const query of cases) {
       const response = await fetch(`${running.baseUrl}/api/v1/observations?${query}`);

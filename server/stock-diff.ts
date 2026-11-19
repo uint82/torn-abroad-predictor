@@ -27,6 +27,7 @@ export interface StockChange {
 
 export interface StockDiff {
   changes: StockChange[];
+  changedStates: StockState[];
   states: StockState[];
   sourceUpdatedAt: number;
 }
@@ -63,6 +64,7 @@ export function diffStock(
   now: number,
 ): StockDiff {
   const changes: StockChange[] = [];
+  const changedStates: StockState[] = [];
   const nextStates: StockState[] = [];
   let sourceUpdatedAt = 0;
 
@@ -82,7 +84,7 @@ export function diffStock(
       const previous = states.get(key);
       const lastEventAt =
         previous?.quantity === quantity ? previous.lastEventAt : eventAt(previous, updatedAt, now);
-      nextStates.push({
+      const nextState: StockState = {
         country: country.code,
         itemId: item.itemId,
         quantity,
@@ -91,7 +93,12 @@ export function diffStock(
         firstSeenAt: previous?.firstSeenAt ?? updatedAt,
         lastSeenAt: now,
         lastEventAt,
-      });
+      };
+      nextStates.push(nextState);
+
+      if (!previous || previous.quantity !== quantity || previous.cost !== item.cost) {
+        changedStates.push(nextState);
+      }
 
       if (previous?.quantity === quantity) {
         continue;
@@ -110,5 +117,5 @@ export function diffStock(
     }
   }
 
-  return { changes, states: nextStates, sourceUpdatedAt };
+  return { changes, changedStates, states: nextStates, sourceUpdatedAt };
 }

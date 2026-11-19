@@ -41,7 +41,24 @@ CREATE TABLE IF NOT EXISTS polls (
 
 CREATE INDEX IF NOT EXISTS polls_collected_at ON polls (collected_at);
 
-PRAGMA user_version = 1;
+CREATE TABLE IF NOT EXISTS stats (
+  key TEXT PRIMARY KEY,
+  value INTEGER NOT NULL
+);
+
+INSERT OR IGNORE INTO stats (key, value) VALUES ('event_count', 0);
+
+CREATE TRIGGER IF NOT EXISTS stock_events_count_insert
+AFTER INSERT ON stock_events
+BEGIN
+  UPDATE stats SET value = value + 1 WHERE key = 'event_count';
+END;
+
+CREATE TRIGGER IF NOT EXISTS stock_events_count_delete
+AFTER DELETE ON stock_events
+BEGIN
+  UPDATE stats SET value = value - 1 WHERE key = 'event_count';
+END;
 `;
 
 export const UPSERT_STATE = `
@@ -78,10 +95,10 @@ export const OBSERVATIONS = `
 WITH selected AS (
   SELECT item_id, observed_at, quantity
   FROM stock_events
-  WHERE country = :country
-    AND observed_at >= :from
-    AND observed_at <= :to
-    AND (:itemId IS NULL OR item_id = :itemId)
+  WHERE country = ?
+    AND observed_at >= ?
+    AND observed_at <= ?
+    AND (? IS NULL OR item_id = ?)
 
   UNION ALL
 
@@ -90,17 +107,27 @@ WITH selected AS (
   JOIN (
     SELECT item_id, MAX(observed_at) AS observed_at
     FROM stock_events
-    WHERE country = :country
-      AND observed_at < :from
-      AND (:itemId IS NULL OR item_id = :itemId)
+    WHERE country = ?
+      AND observed_at < ?
+      AND (? IS NULL OR item_id = ?)
     GROUP BY item_id
   ) AS prior
     ON prior.item_id = event.item_id
    AND prior.observed_at = event.observed_at
-  WHERE event.country = :country
+  WHERE event.country = ?
 )
 SELECT item_id, observed_at, quantity
 FROM selected
-WHERE (:itemId IS NULL OR item_id = :itemId)
+WHERE (? IS NULL OR item_id = ?)
+ORDER BY item_id, observed_at
+`;
+
+export const OBSERVATIONS_RANGE = `
+SELECT item_id, observed_at, quantity
+FROM stock_events
+WHERE country = ?
+  AND observed_at >= ?
+  AND observed_at <= ?
+  AND (? IS NULL OR item_id = ?)
 ORDER BY item_id, observed_at
 `;

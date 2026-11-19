@@ -53,6 +53,7 @@ describe('diffStock', () => {
       kind: 'initial',
     });
     expect(diff.states).toHaveLength(2);
+    expect(diff.changedStates).toHaveLength(2);
     expect(diff.sourceUpdatedAt).toBe(now);
   });
 
@@ -101,6 +102,7 @@ describe('diffStock', () => {
     const diff = diffStock(stockData(now, [{ itemId: 1, quantity: 10 }]), states, now);
 
     expect(diff.changes).toEqual([]);
+    expect(diff.changedStates).toEqual([]);
     expect(diff.states[0]).toMatchObject({
       quantity: 10,
       firstSeenAt: firstAt,
@@ -115,6 +117,7 @@ describe('diffStock', () => {
     const diff = diffStock(stockData(now, [{ itemId: 1, quantity: 10, cost: 125 }]), states, now);
 
     expect(diff.changes).toEqual([]);
+    expect(diff.changedStates).toHaveLength(1);
     expect(diff.states[0]?.cost).toBe(125);
   });
 

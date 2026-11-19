@@ -1,14 +1,28 @@
 import { DAY_MS } from '../src/core/time';
+import {
+  DEFAULT_DATABASE_PATH,
+  DEFAULT_HOST,
+  DEFAULT_POLL_INTERVAL_MS,
+  DEFAULT_PORT,
+  DEFAULT_RETENTION_DAYS,
+  MAX_POLL_INTERVAL_MS,
+  MAX_RETENTION_DAYS,
+  MIN_POLL_INTERVAL_MS,
+  MIN_RETENTION_DAYS,
+} from './defaults';
+import { integerFromEnv } from './env';
 
-export const DEFAULT_PORT = 8787;
-export const DEFAULT_HOST = '0.0.0.0';
-export const DEFAULT_DATABASE_PATH = 'data/stock.sqlite';
-export const DEFAULT_POLL_INTERVAL_MS = 60_000;
-export const DEFAULT_RETENTION_DAYS = 90;
-export const MIN_POLL_INTERVAL_MS = 30_000;
-export const MAX_POLL_INTERVAL_MS = 15 * 60_000;
-export const MIN_RETENTION_DAYS = 7;
-export const MAX_RETENTION_DAYS = 365;
+export {
+  DEFAULT_DATABASE_PATH,
+  DEFAULT_HOST,
+  DEFAULT_POLL_INTERVAL_MS,
+  DEFAULT_PORT,
+  DEFAULT_RETENTION_DAYS,
+  MAX_POLL_INTERVAL_MS,
+  MAX_RETENTION_DAYS,
+  MIN_POLL_INTERVAL_MS,
+  MIN_RETENTION_DAYS,
+};
 
 export interface ServerConfig {
   port: number;
@@ -16,22 +30,6 @@ export interface ServerConfig {
   databasePath: string;
   pollIntervalMs: number;
   retentionMs: number;
-}
-
-function integerFromEnv(
-  value: string | undefined,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  if (value === undefined || value.trim() === '') {
-    return fallback;
-  }
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    return fallback;
-  }
-  return parsed;
 }
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {

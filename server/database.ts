@@ -1,7 +1,14 @@
 import { DatabaseSync } from 'node:sqlite';
 import type { CountryCode, StockObservation } from '../src/core/types';
 import type { StockChange, StockState } from './stock-diff';
-import { INSERT_EVENT, INSERT_POLL, OBSERVATIONS, SCHEMA, UPSERT_STATE } from './store-schema';
+import {
+  INSERT_EVENT,
+  INSERT_POLL,
+  OBSERVATIONS,
+  OBSERVATIONS_RANGE,
+  SCHEMA,
+  UPSERT_STATE,
+} from './store-schema';
 import { numberValue, parsePoll, parseState } from './store-rows';
 import type { ObservationSet, PollInput, StoreHealth } from './store-types';
 
@@ -95,8 +102,26 @@ export class StockStore {
     from: number,
     to: number,
     itemId: number | null = null,
+    includePrior = true,
   ): ObservationSet {
-    const rows = this.#db.prepare(OBSERVATIONS).all({ country, from, to, itemId });
+    const rows = includePrior
+      ? this.#db
+          .prepare(OBSERVATIONS)
+          .all(
+            country,
+            from,
+            to,
+            itemId,
+            itemId,
+            country,
+            from,
+            itemId,
+            itemId,
+            country,
+            itemId,
+            itemId,
+          )
+      : this.#db.prepare(OBSERVATIONS_RANGE).all(country, from, to, itemId, itemId);
     const items: Record<number, StockObservation[]> = {};
     for (const row of rows) {
       const id = numberValue(row.item_id);
@@ -122,7 +147,7 @@ export class StockStore {
     const countRow = this.#db
       .prepare(
         `SELECT
-          (SELECT COUNT(*) FROM stock_events) AS events,
+          (SELECT value FROM stats WHERE key = 'event_count') AS events,
           (SELECT COUNT(*) FROM stock_state) AS states`,
       )
       .get();
