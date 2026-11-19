@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules'],
+    ignores: ['dist', 'dist-server', 'coverage', 'node_modules'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -21,6 +21,12 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['server/**/*.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
   prettier,

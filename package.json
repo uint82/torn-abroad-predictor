@@ -6,12 +6,15 @@
   "description": "Find profitable items to buy abroad in Torn City.",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "server:build": "vite build --config vite.server.config.ts",
+    "server:start": "node dist-server/index.js",
+    "server": "npm run server:build && npm run server:start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
