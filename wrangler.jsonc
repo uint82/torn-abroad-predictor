@@ -16,8 +16,7 @@
     {
       "binding": "DB",
       "database_name": "torn-abroad-stock",
-      // TODO: replace this with the id printed by `wrangler d1 create`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "830f4e1f-98ee-40cb-a906-cfdc61052cf2",
       "migrations_dir": "migrations",
     },
   ],
