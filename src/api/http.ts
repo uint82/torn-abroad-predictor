@@ -20,6 +20,7 @@ export interface HttpClientOptions {
   retries?: number;
   retryBaseMs?: number;
   target?: string;
+  headers?: Readonly<Record<string, string>>;
 }
 
 export interface HttpRequestOptions {
@@ -43,6 +44,7 @@ export class HttpClient {
   readonly #retries: number;
   readonly #retryBaseMs: number;
   readonly #target: string;
+  readonly #headers: Readonly<Record<string, string>>;
 
   constructor(options: HttpClientOptions = {}) {
     this.#fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis);
@@ -50,6 +52,7 @@ export class HttpClient {
     this.#retries = options.retries ?? DEFAULT_RETRIES;
     this.#retryBaseMs = options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
     this.#target = options.target ?? 'the API';
+    this.#headers = options.headers ?? {};
   }
 
   async json<T>(url: string, options: HttpRequestOptions = {}): Promise<T> {
@@ -80,7 +83,7 @@ export class HttpClient {
     try {
       response = await this.#fetchImpl(url, {
         method: 'GET',
-        headers: { Accept: 'application/json', ...options.headers },
+        headers: { Accept: 'application/json', ...this.#headers, ...options.headers },
         signal: controller.signal,
       });
     } catch (error) {

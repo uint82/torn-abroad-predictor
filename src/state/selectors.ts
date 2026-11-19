@@ -19,6 +19,7 @@ export function selectRows(state: AppState, now: number): ItemRow[] {
     catalog: state.catalog,
     quotes: state.quotes,
     histories: state.histories,
+    remoteHistories: state.remoteHistories,
     settings: state.settings,
     now,
   });
@@ -40,6 +41,7 @@ export function selectOverview(state: AppState, now: number): CountryPlan[] {
       catalog: state.catalog,
       quotes: {},
       histories: state.histories,
+      remoteHistories: state.remoteHistories,
       settings: state.settings,
       now,
     });

@@ -31,6 +31,7 @@ export interface AppState {
   quoteFailures: QuoteFailure[];
   lastQuoteRefreshAt: number | null;
   histories: Histories;
+  remoteHistories: Histories;
   selectedItemId: number | null;
   notice: string | null;
   error: string | null;
@@ -66,6 +67,7 @@ export function createInitialState(data: InitialData): AppState {
     quoteFailures: [],
     lastQuoteRefreshAt: null,
     histories: data.histories,
+    remoteHistories: { stock: {}, prices: {} },
     selectedItemId: null,
     notice: null,
     error: null,

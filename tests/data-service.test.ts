@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CatalogItem, MarketQuote, StockData } from '../src/core/types';
+import type { CatalogItem, MarketQuote, RemoteStockHistory, StockData } from '../src/core/types';
 import { DEFAULT_FILTERS, DEFAULT_SETTINGS } from '../src/core/types';
 import { ApiError } from '../src/core/errors';
-import type { CatalogClient, StockClient } from '../src/state/clients';
+import type { CatalogClient, HistoryClient, StockClient } from '../src/state/clients';
 import { createInitialState } from '../src/state/app-state';
 import { DataService } from '../src/state/data-service';
 import { Store } from '../src/state/store';
@@ -69,6 +69,9 @@ function makeService(
   options: {
     apiKey?: string;
     torn?: CatalogClient;
+    history?: HistoryClient | null;
+    historyDays?: number;
+    historyTtlMs?: number;
     withCatalog?: boolean;
     withStock?: boolean;
   } = {},
@@ -91,6 +94,9 @@ function makeService(
     storage,
     createTornClient: () => torn,
     createStockClient: makeStockClient,
+    createHistoryClient: () => options.history ?? null,
+    historyDays: options.historyDays,
+    historyTtlMs: options.historyTtlMs,
     now: () => NOW,
   });
   return { store, storage, service, torn };
@@ -261,6 +267,67 @@ describe('DataService', () => {
     expect(store.get().settings.capacity).toBe(43);
     expect(store.get().settings.waitMinutes).toBe(0);
     expect(loadSettings(storage).capacity).toBe(43);
+  });
+
+  it('merges remote history without growing persisted local history', async () => {
+    const remote: RemoteStockHistory = {
+      country: 'jap',
+      from: NOW - 86_400_000,
+      to: NOW,
+      items: {
+        1: [
+          { at: NOW - 2 * 60 * 60_000, quantity: 20 },
+          { at: NOW - 60 * 60_000, quantity: 12 },
+        ],
+      },
+    };
+    const history: HistoryClient = {
+      getStockHistory: async () => remote,
+    };
+    const { store, storage, service } = makeService({ history });
+    await service.refreshAll(true);
+
+    expect(store.get().remoteHistories.stock.jap?.[1]).toHaveLength(2);
+    expect(store.get().histories.stock.jap?.[1]).toHaveLength(1);
+    expect(loadHistories(storage, NOW)?.stock.jap?.[1]).toHaveLength(1);
+  });
+
+  it('keeps stock usable when remote history fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const history: HistoryClient = {
+      getStockHistory: async () => {
+        throw new Error('collector offline');
+      },
+    };
+    const { store, service } = makeService({ history });
+    await service.refreshAll(true);
+
+    expect(store.get().stockStatus).toBe('ready');
+    expect(store.get().remoteHistories).toEqual({ stock: {}, prices: {} });
+    expect(warn).toHaveBeenCalledWith('Remote stock history unavailable: collector offline');
+    warn.mockRestore();
+  });
+
+  it('refreshes remote history after the TTL and when the country changes', async () => {
+    const calls: string[] = [];
+    const history: HistoryClient = {
+      getStockHistory: async (country) => {
+        calls.push(country);
+        return {
+          country,
+          from: NOW - 86_400_000,
+          to: NOW,
+          items: {},
+        };
+      },
+    };
+    const { service } = makeService({ history, historyTtlMs: 60_000 });
+    await service.refreshAll(true);
+    await service.refreshAll(false);
+    expect(calls).toEqual(['jap']);
+
+    await service.setCountry('mex');
+    expect(calls).toEqual(['jap', 'mex']);
   });
 
   it('refetches quotes when the country changes', async () => {

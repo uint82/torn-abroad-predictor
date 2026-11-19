@@ -12,6 +12,7 @@ import {
   buildSelloutCycles,
   estimateRestockSize,
   estimateSellRatePerHour,
+  REMOTE_HISTORY_WINDOW_MS,
   sanitizeStockObservations,
   type SelloutCycle,
 } from './stock-history';
@@ -19,6 +20,9 @@ import {
 export const STALE_OBSERVATION_MS = 20 * MINUTE_MS;
 export const STALE_FORECAST_MS = HOUR_MS;
 export const RESTOCK_LOOKAHEAD_MS = DAY_MS;
+
+const SELL_RATE_WINDOW_MS = DAY_MS;
+const RESTOCK_SIZE_WINDOW_MS = 7 * DAY_MS;
 
 const HIGH_CONFIDENCE_SAMPLES = 8;
 const HIGH_CONFIDENCE_SPAN_MS = 2 * HOUR_MS;
@@ -67,17 +71,26 @@ function stockAt(timestamp: number, observation: StockObservation, ratePerMinute
   return Math.max(0, observation.quantity - ratePerMinute * (elapsed / MINUTE_MS));
 }
 
+function historySince(
+  observations: readonly StockObservation[],
+  cutoff: number,
+): StockObservation[] {
+  return observations.filter((observation) => observation.at >= cutoff);
+}
+
 function createForecastState(
   history: readonly StockObservation[],
   current: StockObservation,
   options: ForecastOptions,
   horizonMinutes: number,
 ): ForecastState {
-  const rate = estimateSellRatePerHour(history);
-  const restockSize = estimateRestockSize(history);
+  const rateHistory = historySince(history, options.now - SELL_RATE_WINDOW_MS);
+  const restockHistory = historySince(history, options.now - RESTOCK_SIZE_WINDOW_MS);
+  const rate = estimateSellRatePerHour(rateHistory);
+  const restockSize = estimateRestockSize(restockHistory, true);
   const ratePerMinute = rate === null ? 0 : rate / 60;
   const cycles = buildSelloutCycles(history);
-  const first = history[0] ?? current;
+  const first = rateHistory[0] ?? current;
   const end = Math.max(options.now, current.at) + horizonMinutes * MINUTE_MS;
   return {
     current,
@@ -87,7 +100,7 @@ function createForecastState(
     rate,
     restockSize,
     ratePerMinute,
-    samples: history.length,
+    samples: rateHistory.length,
     ageMs: Math.max(0, options.now - current.at),
     spanMs: current.at - first.at,
     now: options.now,
@@ -269,7 +282,7 @@ export function forecastStock(
   options: ForecastOptions,
 ): StockForecast {
   const horizonMinutes = clampHorizon(options.horizonMinutes);
-  const history = sanitizeStockObservations(observations, options.now);
+  const history = sanitizeStockObservations(observations, options.now, REMOTE_HISTORY_WINDOW_MS);
   const current = history[history.length - 1];
   if (!current) {
     return emptyForecast(horizonMinutes);

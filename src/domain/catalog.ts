@@ -14,6 +14,7 @@ import { groupForType } from './item-groups';
 import { predictPriceTrend } from './prediction';
 import { feePercentFor, isValidAmount, netSalePrice, unitProfit } from './profit';
 import { forecastStock } from './restock';
+import { mergeStockObservations } from './stock-history';
 
 export interface BuildRowsOptions {
   country: CountryCode;
@@ -21,6 +22,7 @@ export interface BuildRowsOptions {
   catalog: readonly CatalogItem[] | null | undefined;
   quotes: Readonly<Record<number, MarketQuote>>;
   histories: Histories;
+  remoteHistories?: Histories;
   settings: Settings;
   now: number;
 }
@@ -46,6 +48,12 @@ function withCurrentStock(
     return [...history];
   }
   return [...history, { at, quantity }];
+}
+
+function stockHistoryFor(options: BuildRowsOptions, itemId: number): StockObservation[] {
+  const local = options.histories.stock[options.country]?.[itemId] ?? [];
+  const remote = options.remoteHistories?.stock[options.country]?.[itemId] ?? [];
+  return remote.length === 0 ? local : mergeStockObservations(local, remote, options.now);
 }
 
 function quotePrice(quote: MarketQuote | undefined): number | null {
@@ -96,13 +104,10 @@ export function buildItemRows(options: BuildRowsOptions): ItemRow[] {
         : null;
 
     const stockAt = stockItem ? (options.stock?.updatedAt ?? options.now) : options.now;
+    const history = stockHistoryFor(options, itemId);
     const stockHistory = stockItem
-      ? withCurrentStock(
-          options.histories.stock[options.country]?.[itemId] ?? [],
-          stockItem.quantity,
-          stockAt,
-        )
-      : (options.histories.stock[options.country]?.[itemId] ?? []);
+      ? withCurrentStock(history, stockItem.quantity, stockAt)
+      : history;
 
     rows.push({
       itemId,

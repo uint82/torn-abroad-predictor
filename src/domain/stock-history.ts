@@ -4,6 +4,8 @@ import { nextRestockTick, RESTOCK_INTERVAL_MS } from './restock-ticks';
 import { median } from './statistics';
 
 export const HISTORY_WINDOW_MS = DAY_MS;
+export const REMOTE_HISTORY_WINDOW_MS = 30 * DAY_MS;
+export const MAX_MERGED_STOCK_OBSERVATIONS = 4_096;
 export const MIN_OBSERVATION_GAP_MS = 30 * SECOND_MS;
 export const MAX_OBSERVATION_GAP_MS = 6 * HOUR_MS;
 
@@ -13,6 +15,7 @@ interface Interval {
   from: number;
   to: number;
   minutes: number;
+  fromQuantity: number;
   delta: number;
 }
 
@@ -47,6 +50,24 @@ export function sanitizeStockObservations(
   return [...latestByTimestamp.values()].sort((a, b) => a.at - b.at);
 }
 
+export function mergeStockObservations(
+  existing: readonly StockObservation[],
+  incoming: readonly StockObservation[],
+  now: number,
+  windowMs = REMOTE_HISTORY_WINDOW_MS,
+): StockObservation[] {
+  const byTimestamp = new Map<number, StockObservation>();
+  for (const observation of existing) {
+    byTimestamp.set(observation.at, observation);
+  }
+  for (const observation of incoming) {
+    byTimestamp.set(observation.at, observation);
+  }
+  return sanitizeStockObservations([...byTimestamp.values()], now, windowMs).slice(
+    -MAX_MERGED_STOCK_OBSERVATIONS,
+  );
+}
+
 function buildIntervals(observations: readonly StockObservation[]): Interval[] {
   const intervals: Interval[] = [];
   for (let index = 1; index < observations.length; index += 1) {
@@ -63,6 +84,7 @@ function buildIntervals(observations: readonly StockObservation[]): Interval[] {
       from: previous.at,
       to: current.at,
       minutes: elapsed / MINUTE_MS,
+      fromQuantity: previous.quantity,
       delta: current.quantity - previous.quantity,
     });
   }
@@ -82,9 +104,12 @@ export function estimateSellRatePerHour(observations: readonly StockObservation[
   return units / (minutes / 60);
 }
 
-export function estimateRestockSize(observations: readonly StockObservation[]): number | null {
+export function estimateRestockSize(
+  observations: readonly StockObservation[],
+  requireSoldOut = false,
+): number | null {
   const jumps = buildIntervals(observations)
-    .filter((interval) => interval.delta > 0)
+    .filter((interval) => interval.delta > 0 && (!requireSoldOut || interval.fromQuantity === 0))
     .map((interval) => interval.delta);
   const size = median(jumps);
   return size === null ? null : Math.max(MIN_RESTOCK_SIZE, Math.round(size));
@@ -106,9 +131,6 @@ function findSoldOutAt(
     if (!previous || !current) {
       continue;
     }
-    if (current.at - previous.at > MAX_OBSERVATION_GAP_MS) {
-      return null;
-    }
     if (current.quantity <= 0) {
       return current.at;
     }
@@ -125,9 +147,6 @@ export function buildSelloutCycles(observations: readonly StockObservation[]): S
     const previous = observations[index - 1];
     const current = observations[index];
     if (!previous || !current || previous.quantity > 0 || current.quantity <= 0) {
-      continue;
-    }
-    if (current.at - previous.at > MAX_OBSERVATION_GAP_MS) {
       continue;
     }
     const restockedAt = inferRestockAt(previous, current);

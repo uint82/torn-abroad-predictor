@@ -90,6 +90,13 @@ export interface StockObservation {
   quantity: number;
 }
 
+export interface RemoteStockHistory {
+  country: CountryCode;
+  from: number;
+  to: number;
+  items: Record<number, StockObservation[]>;
+}
+
 export interface PriceObservation {
   at: number;
   price: number;

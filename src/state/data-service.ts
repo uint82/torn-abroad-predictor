@@ -1,5 +1,6 @@
 import type { CountryCode, Filters, Settings } from '../core/types';
 import { errorMessage, isAbortError, isKeyError } from '../core/errors';
+import { createDefaultHistoryClient } from '../api/collector';
 import { TornClient } from '../api/torn';
 import { YataClient } from '../api/yata';
 import type { StorageAdapter } from '../storage/storage';
@@ -15,18 +16,12 @@ import { saveHistories } from '../storage/history';
 import type { AppState } from './app-state';
 import type { Store } from './store';
 import type { CatalogClient, StockClient } from './clients';
+import type { DataServiceOptions } from './data-service-options';
 import { mergeStockHistory } from './history-sync';
 import { QuoteService } from './quote-service';
+import { RemoteHistoryService } from './remote-history';
 
 export const AUTO_REFRESH_MS = 60_000;
-
-export interface DataServiceOptions {
-  store: Store<AppState>;
-  storage: StorageAdapter;
-  createTornClient?: (key: string) => CatalogClient;
-  createStockClient?: () => StockClient;
-  now?: () => number;
-}
 
 export class DataService {
   readonly #store: Store<AppState>;
@@ -35,6 +30,7 @@ export class DataService {
   readonly #createStockClient: () => StockClient;
   readonly #now: () => number;
   readonly #quotes: QuoteService;
+  readonly #remoteHistory: RemoteHistoryService;
   #client: CatalogClient | null = null;
   #stockAbort: AbortController | null = null;
   #catalogAbort: AbortController | null = null;
@@ -46,6 +42,13 @@ export class DataService {
     this.#createTornClient = options.createTornClient ?? ((key) => new TornClient(key));
     this.#createStockClient = options.createStockClient ?? (() => new YataClient());
     this.#now = options.now ?? Date.now;
+    this.#remoteHistory = new RemoteHistoryService({
+      store: options.store,
+      client: (options.createHistoryClient ?? createDefaultHistoryClient)(),
+      days: options.historyDays,
+      ttlMs: options.historyTtlMs,
+      now: this.#now,
+    });
     const key = this.#store.get().apiKey;
     if (key !== '') {
       this.#client = this.#createTornClient(key);
@@ -73,11 +76,12 @@ export class DataService {
     }
     this.#stockAbort?.abort();
     this.#catalogAbort?.abort();
+    this.#remoteHistory.abort();
     this.#quotes.abort();
   }
 
   async refreshAll(force: boolean): Promise<void> {
-    const tasks: Promise<void>[] = [this.refreshStock(force)];
+    const tasks: Promise<void>[] = [this.refreshStock(force), this.#remoteHistory.refresh(force)];
     const canUseKey = this.#client !== null && (force || this.#store.get().keyStatus !== 'invalid');
     if (canUseKey) {
       tasks.push(this.refreshCatalog(force));
@@ -253,7 +257,7 @@ export class DataService {
       lastQuoteRefreshAt: null,
       notice: null,
     }));
-    await this.#quotes.refresh(true);
+    await Promise.all([this.#quotes.refresh(true), this.#remoteHistory.refresh(true)]);
   }
 
   setFilters(filters: Filters): void {
@@ -283,6 +287,7 @@ export class DataService {
     if (this.#client) {
       void this.refreshCatalog(false).then(() => this.#quotes.refresh(false));
     }
+    void this.#remoteHistory.refresh(false);
   }
 
   #update(updater: (state: AppState) => AppState): void {

@@ -6,8 +6,10 @@ import type {
   CountryCode,
   CountryStock,
   MarketQuote,
+  RemoteStockHistory,
   StockData,
   StockEntry,
+  StockObservation,
 } from '../core/types';
 import { COUNTRY_CODES } from '../core/types';
 
@@ -49,6 +51,14 @@ function optionalNumber(value: unknown, path: string): number | null {
     return null;
   }
   return number(value, path);
+}
+
+function positiveInteger(value: unknown, path: string): number {
+  const parsed = number(value, path);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new ShapeError('a positive integer', path);
+  }
+  return parsed;
 }
 
 export function extractApiError(payload: unknown): ApiErrorPayload | null {
@@ -141,11 +151,54 @@ function toMillis(timestamp: number): number {
 function parseStockEntry(value: unknown, path: string): StockEntry {
   const entry = record(value, path);
   return {
-    itemId: number(entry.id, `${path}.id`),
+    itemId: positiveInteger(entry.id, `${path}.id`),
     name: text(entry.name, `${path}.name`),
     quantity: number(entry.quantity, `${path}.quantity`),
     cost: number(entry.cost, `${path}.cost`),
   };
+}
+
+function parseStockObservation(value: unknown, path: string): StockObservation {
+  const observation = record(value, path);
+  const at = number(observation.at, `${path}.at`);
+  const quantity = number(observation.quantity, `${path}.quantity`);
+  if (quantity < 0) {
+    throw new ShapeError('a non-negative quantity', `${path}.quantity`);
+  }
+  return { at, quantity: Math.floor(quantity) };
+}
+
+export function parseRemoteStockHistory(
+  payload: unknown,
+  expectedCountry: CountryCode,
+): RemoteStockHistory {
+  const root = record(payload, 'history');
+  const country = text(root.country, 'history.country');
+  if (!COUNTRY_CODES.includes(country as CountryCode) || country !== expectedCountry) {
+    throw new ShapeError(expectedCountry, 'history.country');
+  }
+  const from = number(root.from, 'history.from');
+  const to = number(root.to, 'history.to');
+  if (from > to) {
+    throw new ShapeError('a time range with from <= to', 'history');
+  }
+
+  const rawItems = record(root.items, 'history.items');
+  const items: Record<number, StockObservation[]> = {};
+  for (const [key, value] of Object.entries(rawItems)) {
+    const itemId = Number(key);
+    if (!Number.isInteger(itemId) || itemId <= 0 || String(itemId) !== key) {
+      continue;
+    }
+    const entries = list(value, `history.items.${key}`).map((entry, index) =>
+      parseStockObservation(entry, `history.items.${key}[${index}]`),
+    );
+    if (entries.length > 0) {
+      items[itemId] = entries.sort((a, b) => a.at - b.at);
+    }
+  }
+
+  return { country: expectedCountry, from, to, items };
 }
 
 export function parseTravelExport(payload: unknown, fetchedAt = Date.now()): StockData {

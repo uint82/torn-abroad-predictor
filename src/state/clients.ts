@@ -1,4 +1,4 @@
-import type { CatalogItem, StockData } from '../core/types';
+import type { CatalogItem, CountryCode, RemoteStockHistory, StockData } from '../core/types';
 import type { QuoteBatch } from '../api/torn';
 
 export interface CatalogClient {
@@ -8,4 +8,12 @@ export interface CatalogClient {
 
 export interface StockClient {
   getTravelStock(signal?: AbortSignal): Promise<StockData>;
+}
+
+export interface HistoryClient {
+  getStockHistory(
+    country: CountryCode,
+    days: number,
+    signal?: AbortSignal,
+  ): Promise<RemoteStockHistory>;
 }
