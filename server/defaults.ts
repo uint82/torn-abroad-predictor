@@ -1,0 +1,9 @@
+export const DEFAULT_PORT = 8787;
+export const DEFAULT_HOST = '0.0.0.0';
+export const DEFAULT_DATABASE_PATH = 'data/stock.sqlite';
+export const DEFAULT_POLL_INTERVAL_MS = 60_000;
+export const DEFAULT_RETENTION_DAYS = 90;
+export const MIN_POLL_INTERVAL_MS = 30_000;
+export const MAX_POLL_INTERVAL_MS = 15 * 60_000;
+export const MIN_RETENTION_DAYS = 7;
+export const MAX_RETENTION_DAYS = 365;

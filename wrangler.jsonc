@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "torn-abroad-collector",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-19",
+  "observability": {
+    "enabled": true,
+  },
+  "triggers": {
+    "crons": ["* * * * *", "17 3 * * *"],
+  },
+  "vars": {
+    "RETENTION_DAYS": "90",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "torn-abroad-stock",
+      "database_id": "830f4e1f-98ee-40cb-a906-cfdc61052cf2",
+      "migrations_dir": "migrations",
+    },
+  ],
+}

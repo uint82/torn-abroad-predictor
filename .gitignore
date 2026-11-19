@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-server/
+data/
 coverage/
 .vite/
 *.local
@@ -10,3 +12,5 @@ coverage/
 .idea/
 .vscode/
 *.log
+dist-worker
+.wrangler/

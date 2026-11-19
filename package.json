@@ -1,0 +1,65 @@
+{
+  "name": "torn-abroad-predictor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Find profitable items to buy abroad in Torn City.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server:build": "vite build --config vite.server.config.ts",
+    "server:start": "node dist-server/index.js",
+    "server": "npm run server:build && npm run server:start",
+    "worker:dev": "wrangler dev",
+    "worker:build": "wrangler deploy --dry-run --outdir dist-worker",
+    "worker:deploy": "wrangler deploy",
+    "worker:migrate": "wrangler d1 migrations apply torn-abroad-stock --remote",
+    "worker:migrate:local": "wrangler d1 migrations apply torn-abroad-stock --local",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261118.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.1",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "sass": "^1.108.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1",
+    "wrangler": "^4.165.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uint82/torn-abroad-predictor.git"
+  },
+  "homepage": "https://github.com/uint82/torn-abroad-predictor#readme",
+  "bugs": {
+    "url": "https://github.com/uint82/torn-abroad-predictor/issues"
+  },
+  "keywords": [
+    "torn",
+    "torn-city",
+    "torn-api",
+    "profit",
+    "travel",
+    "vite",
+    "typescript"
+  ]
+}
