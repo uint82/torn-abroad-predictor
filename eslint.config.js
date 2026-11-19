@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'dist-server', 'coverage', 'node_modules'],
+    ignores: ['dist', 'dist-server', 'dist-worker', '.wrangler', 'coverage', 'node_modules'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -24,7 +24,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['server/**/*.ts'],
+    files: ['server/**/*.ts', 'worker/**/*.ts'],
     rules: {
       'no-console': 'off',
     },

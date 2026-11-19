@@ -12,3 +12,5 @@ coverage/
 .idea/
 .vscode/
 *.log
+dist-worker
+.wrangler/
