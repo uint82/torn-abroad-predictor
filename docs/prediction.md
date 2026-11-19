@@ -33,14 +33,14 @@ The basket can use a restock that is expected before landing. This is why a curr
 
 ## Stock forecast
 
-The forecast uses observations recorded from YATA. An observation is one quantity at one timestamp.
+The forecast uses observations recorded from YATA. Local snapshots cover 24 hours. When a collector is configured, the browser adds up to 30 days of remote changes for the selected country.
 
-Only intervals longer than 30 seconds and shorter than 6 hours are used. Longer gaps are treated as missing data because a restock or a sale could have happened inside the gap.
+Sell-rate and restock-size intervals must be longer than 30 seconds and shorter than 6 hours. Longer gaps are treated as missing data because the exact change time is unknown. Sellout cycles do not reject long gaps, so slow items can still produce a cycle.
 
-- Sell rate: total units sold divided by total hours across intervals with a negative delta.
-- Restock size: median of positive jumps, rounded up to at least 1.
-- Sellout cycle: a zero-to-positive restock until the next zero, when every gap in the cycle is under 6 hours.
-- Restock lag: time from one sellout to the next restock, measured across consecutive sellout cycles. The median is used once there are at least two lags. With fewer, the fallback is half the median sellout duration.
+- Sell rate: total units sold divided by total hours across intervals with a negative delta in the last 24 hours.
+- Restock size: median of zero-to-positive jumps in the last 7 days, rounded to at least 1. Other increases are sellbacks and are ignored. With no measured restock, the size is unknown and a restock is not projected.
+- Sellout cycle: a zero-to-positive restock until the next zero.
+- Restock lag: time from one sellout to the next restock, measured across sellout cycles in the available history. The median is used once there are at least two lags. With fewer, the fallback is half the median sellout duration.
 - Restock window: the interquartile range of measured lags, snapped to quarter-hour ticks. It is shown only when at least two lags exist. The window is clipped to the 24-hour lookahead.
 - Next restock time: for an empty item, the latest sellout plus the restock lag. For a stocked item, project the remaining stock at the current sell rate to a sellout, then add the lag. Torn restocks on quarter-hour ticks, so the estimate moves to the next tick. A point estimate over 24 hours away is left blank.
 - Arrival stock chance: share of scenario combinations of measured lags and sellout durations that still have stock at arrival. Current stock that covers the whole horizon returns 100 percent. The estimate needs at least two lag samples and two duration samples.
@@ -90,9 +90,10 @@ A change above 2 percent is rising, below -2 percent is falling, and the rest is
 
 ## Known limits
 
-- History starts empty for a new browser, so early forecasts are weak.
-- Stock history keeps the last 24 hours, so slower sellout cycles cannot be timed.
-- YATA snapshots can miss a restock or contain a manual change. One-minute sampling can miss short sellouts.
+- Local history starts empty for a new browser, so early forecasts are weak. A collector that has been running supplies history immediately.
+- Local stock history keeps 24 hours, so slow sellout cycles need the collector to be timed.
+- Remote history is capped at 30 days and 4096 observations per item. Sell rate still uses only the last 24 hours.
+- YATA snapshots can miss a restock or contain a manual change. One-minute sampling can miss short sellouts, and the collector inherits the same limit.
 - The model assumes a constant sell rate and a stable restock size.
 - One or two sellout cycles can give a noisy restock time and a wide window.
 - Arrival stock chance assumes measured lag and duration samples represent the next cycles. It has not been calibrated against live outcomes yet.

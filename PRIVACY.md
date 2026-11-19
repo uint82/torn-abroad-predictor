@@ -1,6 +1,6 @@
 # Privacy
 
-Torn Abroad Predictor runs in your browser. There is no application server, account system, analytics, or advertising.
+Torn Abroad Predictor runs in your browser. There is no account system, analytics, or advertising. An optional stock collector can serve shared history; the site works without one.
 
 ## What is stored
 
@@ -10,18 +10,20 @@ The app uses `localStorage` under its own site origin for:
 - Your planner settings.
 - Cached Torn item catalog data.
 - Cached YATA stock data.
-- Stock and price history used for forecasts.
+- Stock and price history used for forecasts. Remote history fetched from a collector is kept in memory only.
 
-These values stay in your browser until you remove them, clear site data, or your browser deletes them.
+Stored values stay in your browser until you remove them, clear site data, or your browser deletes them.
 
 ## Where data is sent
 
 - The Torn API key is sent only to `api.torn.com` in the `Authorization` header.
 - Requests to `api.torn.com` also include the item or market path and normal browser headers.
 - Requests to `yata.yt` never include your API key.
-- No data is sent to the project maintainer or any other third party.
+- If a collector URL is configured, requests to that collector contain the selected country code and history length. They never include your API key or settings.
+- A collector sees standard request metadata, such as your IP address and browser headers. This repository does not include a hosted collector; the site operator or a self-hosted instance receives those requests.
+- No other data is sent to the project maintainer or another third party.
 
-The app does not include telemetry. Your browser may still send standard request metadata, such as your IP address, to Torn and YATA as part of normal HTTPS traffic.
+The app does not include telemetry. Your browser may still send standard request metadata, such as your IP address, to Torn, YATA, and a configured collector as part of normal HTTPS traffic.
 
 ## Removing your key
 
@@ -33,6 +35,8 @@ Torn and YATA control their own data handling. Review their policies before usin
 
 - https://www.torn.com/
 - https://yata.yt/
+
+If you use a collector hosted by someone else, review that operator's privacy policy and server logs policy.
 
 ## Changes
 

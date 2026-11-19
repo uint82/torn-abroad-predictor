@@ -1,6 +1,6 @@
 # Architecture
 
-The app is a static Vite site with no server component. Data fetching, storage, scoring, and rendering all run in the browser.
+The predictor is a static Vite site. Data fetching, storage, scoring, and rendering run in the browser. An optional collector supplies longer stock history but does not run forecasts.
 
 ## Layers
 
@@ -12,10 +12,13 @@ The app is a static Vite site with no server component. Data fetching, storage, 
 | `src/storage` | Local storage adapter, settings, cache, and history persistence.            |
 | `src/state`   | Store, selectors, quote service, and the data refresh service.              |
 | `src/ui`      | DOM construction, dialogs, formatting, URL state.                           |
+| `server`      | Optional YATA collector, SQLite store, and read-only history API.           |
 
 Dependencies point inward. The domain layer has no DOM or storage imports, which keeps prediction, restock, and profit logic testable in Node.
 
-Restock forecasting is split by responsibility. `stock-history.ts` builds observations, sell rates, and sellout cycles. `restock-timing.ts` measures restock lag and the timing window. `restock-probability.ts` scores arrival stock chance. `restock-simulation.ts` projects stock forward. `restock.ts` combines those pieces into the forecast used by the UI.
+Restock forecasting is split by responsibility. `stock-history.ts` merges local and remote observations, then builds sell rates, restock sizes, and sellout cycles. `restock-timing.ts` measures restock lag and the timing window. `restock-probability.ts` scores arrival stock chance. `restock-simulation.ts` projects stock forward. `restock.ts` combines those pieces into the forecast used by the UI.
+
+The `server` directory is separate from the browser bundle. It imports shared parsing and HTTP code from `src/api`, but no DOM or UI code. Its pure stock diff lives in `server/stock-diff.ts`; SQLite access, the YATA poller, and the HTTP API are split into their own modules.
 
 ## Startup flow
 
@@ -24,7 +27,7 @@ Restock forecasting is split by responsibility. `stock-history.ts` builds observ
 3. `Store` holds the state and notifies subscribers when an update changes it.
 4. `DataService` receives the store and storage adapter.
 5. `createApp` builds the views and subscribes to the store.
-6. `DataService.start` refreshes stock, catalog, and quotes as needed, then schedules a 60-second tick.
+6. `DataService.start` refreshes stock, remote history, catalog, and quotes as needed, then schedules a 60-second tick.
 
 The first render happens before the first network request completes. Cached data fills the page, and loading or error states update in place.
 
@@ -44,10 +47,11 @@ The store ignores updates when the updater returns the same object reference. Th
 | Country stock   | 60 seconds | Refreshed on the tick, history recorded on each fetch. |
 | Live quotes     | 5 minutes  | Refreshed only for the selected country.               |
 | Overview prices | Catalog    | No live quote fan-out for all countries.               |
+| Shared history  | 5 minutes  | Fetched per country when a collector is configured.    |
 
 Quotes are capped at 60 item IDs per refresh and gated at 90 requests per minute to stay under the Torn limit of 100 requests per minute per key. When several quote requests fail, the service keeps catalog prices and shows one notice instead of a stack of errors.
 
-A stock fetch failure keeps the last cached snapshot. A catalog failure keeps the cached catalog if one exists. An invalid key updates the key status, leaves the cached catalog in place, and explains the problem in the key dialog.
+A stock fetch failure keeps the last cached snapshot. A catalog failure keeps the cached catalog if one exists. An invalid key updates the key status, leaves the cached catalog in place, and explains the problem in the key dialog. A collector failure keeps local and previously fetched remote history; the rest of the refresh is unaffected.
 
 ## API key lifecycle
 
@@ -67,8 +71,25 @@ The URL carries the selected country, group filter, sort key, and stock toggle. 
 
 The API layer wraps network failures, timeouts, malformed responses, and Torn error codes in typed errors. Network messages name the failing host, so a YATA outage is not mistaken for a Torn key problem. The UI shows a short message and keeps whatever data is still usable.
 
-Abort controllers cancel in-flight stock, catalog, and quote requests when the user changes country, saves a key, or stops the service. Aborted requests are ignored rather than reported as failures.
+Abort controllers cancel in-flight stock, catalog, quote, and history requests when the user changes country, saves a key, or stops the service. Aborted requests are ignored rather than reported as failures.
 
 ## Testing
 
-The Vitest suite covers schemas, HTTP behavior, rate limiting, storage migration and validation, domain math, prediction edge cases, restock replay, selectors, and data service orchestration. UI code is verified by type checking and production builds; the view layer intentionally stays thin.
+The Vitest suite covers schemas, HTTP behavior, rate limiting, storage migration and validation, domain math, prediction edge cases, restock replay, selectors, data service orchestration, stock diffing, SQLite storage, the collector API, and the collector client. UI code is verified by type checking and production builds; the view layer intentionally stays thin.
+
+## Shared stock history
+
+The browser keeps 24 hours of stock snapshots. A collector extends the history window to 30 days without changing the forecast code.
+
+1. The collector requests the YATA travel export once per minute.
+2. `diffStock` compares each item with the last stored state and classifies the change: `initial`, `restock`, `sellback`, or `sale`.
+3. `StockStore` writes state and change events to SQLite in one transaction, then records the poll.
+4. The browser requests `/api/v1/observations` for its selected country at most every 5 minutes.
+5. `parseRemoteStockHistory` validates the payload, and `mergeRemoteStockHistory` merges it into `AppState.remoteHistories`.
+6. `buildItemRows` merges local observations with remote observations for each item and passes the result to `forecastStock`.
+
+Remote history is intentionally not persisted to local storage. It can be large, it changes as the collector runs, and a stale copy adds little. Local history remains the fallback when the collector is missing or unreachable.
+
+The collector returns observations, not forecasts. Forecast settings such as travel method, waiting time, and horizon remain in the browser, so a settings change needs no collector request.
+
+The API is read-only and CORS-enabled because the static site and collector are usually on different origins. It has no authentication and contains no user-specific data. See `docs/collector.md` for deployment and storage details.

@@ -2,7 +2,7 @@
 
 ## Setup
 
-Use Node.js 22 or newer.
+Use Node.js 22.13 or newer.
 
 ```bash
 npm install
@@ -17,6 +17,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run server:build
 ```
 
 ## Branches and commits
