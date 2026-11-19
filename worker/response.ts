@@ -9,6 +9,10 @@ async function compressedBody(text: string): Promise<ReadableStream<Uint8Array>>
   return new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
 }
 
+interface EncodedResponseInit extends ResponseInit {
+  encodeBody: 'manual';
+}
+
 export async function toWorkerResponse(
   result: ApiResult,
   acceptEncoding: string | null,
@@ -28,7 +32,10 @@ export async function toWorkerResponse(
     acceptEncoding?.includes('gzip')
   ) {
     headers.set('Content-Encoding', 'gzip');
-    return new Response(await compressedBody(text), { status: result.status, headers });
+    // The body is already compressed. Without this, the runtime treats the gzip
+    // stream as plain text and compresses it again.
+    const init: EncodedResponseInit = { status: result.status, headers, encodeBody: 'manual' };
+    return new Response(await compressedBody(text), init);
   }
   return new Response(text, { status: result.status, headers });
 }
