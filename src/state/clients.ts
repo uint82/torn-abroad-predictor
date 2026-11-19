@@ -10,10 +10,12 @@ export interface StockClient {
   getTravelStock(signal?: AbortSignal): Promise<StockData>;
 }
 
+export interface StockHistoryRequest {
+  country: CountryCode;
+  days: number;
+  since?: number;
+}
+
 export interface HistoryClient {
-  getStockHistory(
-    country: CountryCode,
-    days: number,
-    signal?: AbortSignal,
-  ): Promise<RemoteStockHistory>;
+  getStockHistory(request: StockHistoryRequest, signal?: AbortSignal): Promise<RemoteStockHistory>;
 }

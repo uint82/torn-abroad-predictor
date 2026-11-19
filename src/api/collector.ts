@@ -1,5 +1,5 @@
-import type { CountryCode, RemoteStockHistory } from '../core/types';
-import type { HistoryClient } from '../state/clients';
+import type { RemoteStockHistory } from '../core/types';
+import type { HistoryClient, StockHistoryRequest } from '../state/clients';
 import { HttpClient } from './http';
 import { parseRemoteStockHistory } from './schemas';
 
@@ -23,16 +23,22 @@ export class CollectorClient implements HistoryClient {
   }
 
   async getStockHistory(
-    country: CountryCode,
-    days: number,
+    request: StockHistoryRequest,
     signal?: AbortSignal,
   ): Promise<RemoteStockHistory> {
     if (this.#baseUrl === '') {
       throw new Error('Collector URL is not configured.');
     }
-    const url = `${this.#baseUrl}/api/v1/observations?country=${encodeURIComponent(country)}&days=${days}`;
+    const params = new URLSearchParams({
+      country: request.country,
+      days: String(request.days),
+    });
+    if (request.since !== undefined) {
+      params.set('since', String(request.since));
+    }
+    const url = `${this.#baseUrl}/api/v1/observations?${params.toString()}`;
     const payload = await this.#http.json(url, { signal });
-    return parseRemoteStockHistory(payload, country);
+    return parseRemoteStockHistory(payload, request.country);
   }
 }
 

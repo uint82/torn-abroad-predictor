@@ -7,6 +7,7 @@ import type { Store } from './store';
 
 export const REMOTE_HISTORY_DAYS = 30;
 export const REMOTE_HISTORY_TTL_MS = 5 * 60_000;
+export const REMOTE_HISTORY_OVERLAP_MS = 10 * 60_000;
 
 export interface RemoteHistoryOptions {
   store: Store<AppState>;
@@ -23,6 +24,7 @@ export class RemoteHistoryService {
   readonly #ttlMs: number;
   readonly #now: () => number;
   readonly #attemptedAt = new Map<CountryCode, number>();
+  readonly #syncedTo = new Map<CountryCode, number>();
   #abort: AbortController | null = null;
 
   constructor(options: RemoteHistoryOptions) {
@@ -56,9 +58,18 @@ export class RemoteHistoryService {
     const controller = new AbortController();
     this.#abort = controller;
     this.#attemptedAt.set(country, now);
+    const syncedTo = this.#syncedTo.get(country);
     try {
-      const remote = await this.#client.getStockHistory(country, this.#days, controller.signal);
+      const remote = await this.#client.getStockHistory(
+        {
+          country,
+          days: this.#days,
+          since: syncedTo === undefined ? undefined : syncedTo - REMOTE_HISTORY_OVERLAP_MS,
+        },
+        controller.signal,
+      );
       const receivedAt = this.#now();
+      this.#syncedTo.set(country, remote.to);
       this.#store.update((current) => ({
         ...current,
         remoteHistories: mergeRemoteStockHistory(current.remoteHistories, remote, receivedAt),

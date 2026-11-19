@@ -112,7 +112,7 @@ describe('CollectorClient', () => {
       'https://collector.test/',
       new HttpClient({ fetchImpl: fetchImpl as unknown as typeof fetch, retries: 0 }),
     );
-    const history = await client.getStockHistory('jap', 30);
+    const history = await client.getStockHistory({ country: 'jap', days: 30 });
     expect(history.items[1]?.[0]?.quantity).toBe(9);
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://collector.test/api/v1/observations?country=jap&days=30',
@@ -120,9 +120,33 @@ describe('CollectorClient', () => {
     );
   });
 
+  it('requests only the missing window when a sync point is known', async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            country: 'jap',
+            from: NOW - 60_000,
+            to: NOW,
+            items: { 1: [{ at: NOW, quantity: 9 }] },
+          }),
+          { status: 200 },
+        ),
+    );
+    const client = new CollectorClient(
+      'https://collector.test/',
+      new HttpClient({ fetchImpl: fetchImpl as unknown as typeof fetch, retries: 0 }),
+    );
+    await client.getStockHistory({ country: 'jap', days: 30, since: NOW - 60_000 });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      `https://collector.test/api/v1/observations?country=jap&days=30&since=${NOW - 60_000}`,
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
   it('fails clearly without a base URL', async () => {
     const client = new CollectorClient('');
-    await expect(client.getStockHistory('jap', 30)).rejects.toThrow(
+    await expect(client.getStockHistory({ country: 'jap', days: 30 })).rejects.toThrow(
       'Collector URL is not configured.',
     );
   });

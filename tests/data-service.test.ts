@@ -311,10 +311,10 @@ describe('DataService', () => {
   it('refreshes remote history after the TTL and when the country changes', async () => {
     const calls: string[] = [];
     const history: HistoryClient = {
-      getStockHistory: async (country) => {
-        calls.push(country);
+      getStockHistory: async (request) => {
+        calls.push(request.country);
         return {
-          country,
+          country: request.country,
           from: NOW - 86_400_000,
           to: NOW,
           items: {},
