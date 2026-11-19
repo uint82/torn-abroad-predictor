@@ -1,6 +1,6 @@
 # Architecture
 
-The predictor is a static Vite site. Data fetching, storage, scoring, and rendering run in the browser. An optional collector supplies longer stock history but does not run forecasts.
+The predictor is a static Vite site. Data fetching, storage, scoring, and rendering run in the browser. An optional collector supplies longer stock history but does not run forecasts. The collector runs on Node with SQLite or on Cloudflare Workers with D1.
 
 ## Layers
 
@@ -12,13 +12,16 @@ The predictor is a static Vite site. Data fetching, storage, scoring, and render
 | `src/storage` | Local storage adapter, settings, cache, and history persistence.            |
 | `src/state`   | Store, selectors, quote service, and the data refresh service.              |
 | `src/ui`      | DOM construction, dialogs, formatting, URL state.                           |
-| `server`      | Optional YATA collector, SQLite store, and read-only history API.           |
+| `server`      | Shared collection and API core, Node scheduler, SQLite store, HTTP adapter. |
+| `worker`      | Cloudflare entry points, cron dispatch, D1 store, Worker response adapter.  |
 
 Dependencies point inward. The domain layer has no DOM or storage imports, which keeps prediction, restock, and profit logic testable in Node.
 
 Restock forecasting is split by responsibility. `stock-history.ts` merges local and remote observations, then builds sell rates, restock sizes, and sellout cycles. `restock-timing.ts` measures restock lag and the timing window. `restock-probability.ts` scores arrival stock chance. `restock-simulation.ts` projects stock forward. `restock.ts` combines those pieces into the forecast used by the UI.
 
-The `server` directory is separate from the browser bundle. It imports shared parsing and HTTP code from `src/api`, but no DOM or UI code. Its pure stock diff lives in `server/stock-diff.ts`; SQLite access, the YATA poller, and the HTTP API are split into their own modules.
+The `server` directory is separate from the browser bundle. It imports shared parsing and HTTP code from `src/api`, but no DOM or UI code. Its pure stock diff lives in `server/stock-diff.ts`. `collection.ts` owns one poll and writes only changed states. `api-core.ts` owns routing and validation for both runtimes. `collector.ts` and `api.ts` are the Node scheduler and adapter. `worker/` supplies the Cloudflare scheduler, D1 store, and response adapter.
+
+`StockRepository` is the boundary between collection logic and storage. The Node store is synchronous because `node:sqlite` is synchronous. The D1 store returns promises. The interface accepts both, so the shared code has no platform branches.
 
 ## Startup flow
 
@@ -47,7 +50,7 @@ The store ignores updates when the updater returns the same object reference. Th
 | Country stock   | 60 seconds | Refreshed on the tick, history recorded on each fetch. |
 | Live quotes     | 5 minutes  | Refreshed only for the selected country.               |
 | Overview prices | Catalog    | No live quote fan-out for all countries.               |
-| Shared history  | 5 minutes  | Fetched per country when a collector is configured.    |
+| Shared history  | 5 minutes  | Fetched per country after the first full sync.         |
 
 Quotes are capped at 60 item IDs per refresh and gated at 90 requests per minute to stay under the Torn limit of 100 requests per minute per key. When several quote requests fail, the service keeps catalog prices and shows one notice instead of a stack of errors.
 
@@ -75,7 +78,7 @@ Abort controllers cancel in-flight stock, catalog, quote, and history requests w
 
 ## Testing
 
-The Vitest suite covers schemas, HTTP behavior, rate limiting, storage migration and validation, domain math, prediction edge cases, restock replay, selectors, data service orchestration, stock diffing, SQLite storage, the collector API, and the collector client. UI code is verified by type checking and production builds; the view layer intentionally stays thin.
+The Vitest suite covers schemas, HTTP behavior, rate limiting, storage migration and validation, domain math, prediction edge cases, restock replay, selectors, data service orchestration, stock diffing, SQLite storage, D1 storage, Worker cron and fetch behavior, the collector API, and the collector client. UI code is verified by type checking and production builds; the view layer intentionally stays thin.
 
 ## Shared stock history
 
@@ -83,13 +86,15 @@ The browser keeps 24 hours of stock snapshots. A collector extends the history w
 
 1. The collector requests the YATA travel export once per minute.
 2. `diffStock` compares each item with the last stored state and classifies the change: `initial`, `restock`, `sellback`, or `sale`.
-3. `StockStore` writes state and change events to SQLite in one transaction, then records the poll.
-4. The browser requests `/api/v1/observations` for its selected country at most every 5 minutes.
+3. The store writes changed state, change events, and the poll in one transaction. Unchanged states are skipped, so a quiet minute writes one poll row.
+4. The browser requests `/api/v1/observations` for its selected country at most every 5 minutes. The first request asks for 30 days. Later requests send `since` with a 10-minute overlap.
 5. `parseRemoteStockHistory` validates the payload, and `mergeRemoteStockHistory` merges it into `AppState.remoteHistories`.
 6. `buildItemRows` merges local observations with remote observations for each item and passes the result to `forecastStock`.
+
+The Node store uses SQLite and the Worker uses D1, but both implement the same schema. A `stats` row and triggers keep the event count current, so the health endpoint does not scan `stock_events`.
 
 Remote history is intentionally not persisted to local storage. It can be large, it changes as the collector runs, and a stale copy adds little. Local history remains the fallback when the collector is missing or unreachable.
 
 The collector returns observations, not forecasts. Forecast settings such as travel method, waiting time, and horizon remain in the browser, so a settings change needs no collector request.
 
-The API is read-only and CORS-enabled because the static site and collector are usually on different origins. It has no authentication and contains no user-specific data. See `docs/collector.md` for deployment and storage details.
+The API is read-only and CORS-enabled because the static site and collector are usually on different origins. It has no authentication and contains no user-specific data. See `docs/collector.md` for deployment, free-tier limits, and storage details.

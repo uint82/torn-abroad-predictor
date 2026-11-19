@@ -31,7 +31,7 @@ YATA data has no authentication and is fetched on every stock refresh. The app a
 
 YATA updates its export roughly once per minute. The app treats a stock snapshot as fresh for 60 seconds, usable for 24 hours, and stale beyond that. A failed fetch keeps the previous snapshot when one exists.
 
-The optional collector requests the same endpoint once per minute from a server. It stores changes in SQLite and exposes them through the collector API. See `docs/collector.md`.
+The optional collector requests the same endpoint once per minute from a Node server or a Cloudflare Worker. It stores changes in SQLite or D1 and exposes them through the collector API. See `docs/collector.md`.
 
 ## Refresh timing
 
@@ -49,7 +49,9 @@ Each stock refresh appends one observation per item for every country in the YAT
 
 Stock observations are keyed by timestamp and quantity. Price observations are keyed by timestamp. Duplicate timestamps are collapsed before use.
 
-With a collector configured, the browser also fetches up to 30 days of stock changes for the selected country. The collector retains 90 days by default. Remote observations are merged with local ones by timestamp. Incoming remote values win on duplicate timestamps, and the merged list is capped at 4096 observations per item.
+With a collector configured, the browser also fetches up to 30 days of stock changes for the selected country. The collector retains 90 days by default. The first request for a country asks for the full window. Later requests send `since` with a 10-minute overlap, so the collector reads and returns only the recent tail. If the browser has no sync point, or the collector considers `since` too old, the response falls back to the full window.
+
+Remote observations are merged with local ones by timestamp. Incoming remote values win on duplicate timestamps, and the merged list is capped at 4096 observations per item.
 
 Remote history is not saved to local storage. It is fetched again after a reload. Price history remains local only.
 
@@ -63,4 +65,5 @@ The forecast uses local and remote stock observations. It does not import histor
 - The forecast cannot know about events, updates, or manual stock changes. Treat the result as an estimate.
 - The collector only sees what YATA publishes. A restock and a sellout between two YATA updates appear as one change.
 - A collector outage creates a gap. The browser keeps using local history and any earlier remote history it already fetched.
+- A delayed Cloudflare cron run can create gaps even when the Worker is healthy.
 - The app never writes to Torn or YATA.

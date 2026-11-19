@@ -19,11 +19,11 @@ Stored values stay in your browser until you remove them, clear site data, or yo
 - The Torn API key is sent only to `api.torn.com` in the `Authorization` header.
 - Requests to `api.torn.com` also include the item or market path and normal browser headers.
 - Requests to `yata.yt` never include your API key.
-- If a collector URL is configured, requests to that collector contain the selected country code and history length. They never include your API key or settings.
-- A collector sees standard request metadata, such as your IP address and browser headers. This repository does not include a hosted collector; the site operator or a self-hosted instance receives those requests.
+- If a collector URL is configured, requests to that collector contain the selected country code, history length, and an optional last-sync timestamp. They never include your API key or settings.
+- A collector sees standard request metadata, such as your IP address and browser headers. This repository does not include a hosted collector; the site operator or a self-hosted instance receives those requests. A Cloudflare Worker deployment also passes requests through Cloudflare.
 - No other data is sent to the project maintainer or another third party.
 
-The app does not include telemetry. Your browser may still send standard request metadata, such as your IP address, to Torn, YATA, and a configured collector as part of normal HTTPS traffic.
+The app does not include telemetry. Your browser may still send standard request metadata, such as your IP address, to Torn, YATA, and a configured collector as part of normal HTTPS traffic. Cloudflare may process that metadata when the collector runs on Workers.
 
 ## Removing your key
 

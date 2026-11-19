@@ -2,7 +2,7 @@
 
 Torn Abroad Predictor is a client-side profit planner for Torn City travel. It compares abroad shop prices with market prices, tracks stock and restocks from YATA, and estimates the profit of a shopping trip after fees, flight cost, and suitcase space.
 
-The planner runs in the browser and needs no account. An API key is optional. A small collector can keep shared stock history and improve forecasts across devices.
+The planner runs in the browser and needs no account. An API key is optional. A small collector can keep shared stock history and improve forecasts across devices. The collector runs on a VPS with SQLite or on a free Cloudflare Worker with D1.
 
 ## Features
 
@@ -53,25 +53,31 @@ VITE_COLLECTOR_URL=http://localhost:8787 npm run dev
 
 Useful commands:
 
-| Command                | Purpose                                  |
-| ---------------------- | ---------------------------------------- |
-| `npm run dev`          | Start the Vite dev server.               |
-| `npm run build`        | Build the static site into `dist/`.      |
-| `npm run preview`      | Preview the production build.            |
-| `npm run server`       | Build and start the stock collector.     |
-| `npm run server:build` | Build the collector into `dist-server/`. |
-| `npm run server:start` | Run the built collector.                 |
-| `npm run typecheck`    | Run TypeScript without emitting files.   |
-| `npm run lint`         | Run ESLint.                              |
-| `npm run format`       | Format files with Prettier.              |
-| `npm test`             | Run the Vitest suite once.               |
-| `npm run coverage`     | Run tests with a coverage report.        |
+| Command                  | Purpose                                       |
+| ------------------------ | --------------------------------------------- |
+| `npm run dev`            | Start the Vite dev server.                    |
+| `npm run build`          | Build the static site into `dist/`.           |
+| `npm run preview`        | Preview the production build.                 |
+| `npm run server`         | Build and start the Node stock collector.     |
+| `npm run server:build`   | Build the Node collector into `dist-server/`. |
+| `npm run server:start`   | Run the built Node collector.                 |
+| `npm run worker:dev`     | Run the Cloudflare Worker locally.            |
+| `npm run worker:build`   | Build the Worker without deploying.           |
+| `npm run worker:deploy`  | Deploy the Worker.                            |
+| `npm run worker:migrate` | Apply D1 migrations to the remote database.   |
+| `npm run typecheck`      | Typecheck the site, server, and Worker.       |
+| `npm run lint`           | Run ESLint.                                   |
+| `npm run format`         | Format files with Prettier.                   |
+| `npm test`               | Run the Vitest suite once.                    |
+| `npm run coverage`       | Run tests with a coverage report.             |
 
-Run `npm run format`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, and `npm run server:build` before opening a pull request.
+Run `npm run format`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run server:build`, and `npm run worker:build` before opening a pull request.
 
 ## Optional collector
 
-The collector polls the YATA travel export once per minute, stores stock changes in SQLite, and serves history through a small read-only API. It needs no Torn API key. The browser merges that history with its local snapshots, then runs the same forecast as before.
+The collector polls the YATA travel export once per minute, stores stock changes, and serves history through a small read-only API. It needs no Torn API key. The browser merges that history with its local snapshots, then runs the same forecast as before.
+
+The Node version keeps SQLite on disk:
 
 ```bash
 npm run server
@@ -85,7 +91,21 @@ npm run server
 | `POLL_INTERVAL_MS` | `60000`             | YATA poll interval, 30 seconds minimum. |
 | `RETENTION_DAYS`   | `90`                | Stored history, 7 to 365 days.          |
 
-The API exposes `GET /api/v1/health` and `GET /api/v1/observations?country=jap&days=30`. The observations response is keyed by item ID and contains change timestamps and quantities. It does not contain forecasts. See `docs/collector.md` for the API contract, storage model, and deployment notes.
+The Cloudflare version uses a Worker, cron triggers, and D1:
+
+```bash
+npx wrangler login
+npx wrangler d1 create torn-abroad-stock
+```
+
+Put the printed database id into `wrangler.jsonc`, then run:
+
+```bash
+npm run worker:migrate
+npm run worker:deploy
+```
+
+The API exposes `GET /api/v1/health` and `GET /api/v1/observations?country=jap&days=30`. Clients can add `since` to fetch only the missing tail of the window. The observations response is keyed by item ID and contains change timestamps and quantities. It does not contain forecasts. See `docs/collector.md` for the API contract, storage model, free-tier limits, and deployment notes.
 
 ## API key and privacy
 
@@ -101,11 +121,13 @@ If the app says it cannot reach `api.torn.com`, the browser or a content blocker
 
 ## Deployment
 
-`npm run build` produces a static site. The Vite base path is relative, so `dist/` can be served from a subdirectory such as GitHub Pages.
+`npm run build` produces a static site. The Vite base path is relative, so `dist/` can be served from a subdirectory, GitHub Pages, Vercel, or any static host.
 
-For GitHub Pages, publish the `dist` directory from a workflow or a `gh-pages` branch. Browser-only mode needs no server-side environment variables. To use shared history, build with `VITE_COLLECTOR_URL` set to the collector origin and run the collector on a host with persistent storage.
+Browser-only mode needs no server-side environment variables. To use shared history, build with `VITE_COLLECTOR_URL` set to the collector origin.
 
-The collector API is read-only and allows cross-origin reads. Serve it over HTTPS when the site uses HTTPS. See `docs/collector.md`.
+A free deployment can put the static site on Vercel and the collector on Cloudflare Workers with D1. Vercel only serves assets. The Worker runs the API and the minute cron. Cloudflare's free tier is enough for personal traffic, but D1 daily limits hard-fail until midnight UTC, so treat the collector as best effort. See `docs/collector.md`.
+
+The collector API is read-only and allows cross-origin reads. A Worker is HTTPS by default. For the Node server, terminate TLS at a reverse proxy when the site uses HTTPS.
 
 ## Project layout
 
@@ -118,7 +140,9 @@ src/
   storage/    Local storage adapter and persistence
   styles/     SCSS tokens, layout, components, utilities
   ui/         DOM views and dialogs
-server/       Optional stock collector and read-only API
+server/       Optional stock collector, API core, SQLite store, Node adapter
+worker/       Cloudflare Worker adapter, D1 store, cron entry points
+migrations/   D1 schema migrations
 tests/        Vitest unit tests
 docs/         Architecture, data, prediction, and collector notes
 ```
